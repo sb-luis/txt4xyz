@@ -9,6 +9,7 @@
   --color-app-fg: oklch(0.92 0.005 260);
   --color-app-muted: oklch(0.62 0.01 260);
   --color-app-accent: oklch(0.75 0.15 165);
+  --color-app-error: oklch(0.7 0.18 25);
 }
 
 html,
