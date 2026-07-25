@@ -5,7 +5,7 @@ import { Pane } from "@/components/layout/Pane";
 import { OutputPane } from "@/components/output/OutputPane";
 import { usePythonRunner } from "@/lib/python/usePythonRunner";
 import { createDebouncedDocWriter } from "@/lib/persistence/localStore";
-import { resolveInitialDoc } from "@/lib/persistence/resolveInitialDoc";
+import { resolveDocSession } from "@/lib/persistence/docSession";
 
 const DEFAULT_CODE = `for i in range(5):
     print(f"hello from txt4.xyz, iteration {i}")
@@ -13,9 +13,9 @@ const DEFAULT_CODE = `for i in range(5):
 
 export function AppShell() {
   const { status, output, run, stop, clearOutput } = usePythonRunner();
-  const [initialDoc] = useState(() => resolveInitialDoc(DEFAULT_CODE));
-  const codeRef = useRef(initialDoc);
-  const [writer] = useState(() => createDebouncedDocWriter());
+  const [session] = useState(() => resolveDocSession(DEFAULT_CODE));
+  const codeRef = useRef(session.doc);
+  const [writer] = useState(() => createDebouncedDocWriter(session.key));
 
   useEffect(() => {
     return () => writer.cancel();
@@ -32,7 +32,7 @@ export function AppShell() {
       <main className="flex min-h-0 flex-1 flex-col gap-px overflow-hidden bg-app-border md:flex-row">
         <Pane title="editor">
           <CodeEditor
-            initialDoc={initialDoc}
+            initialDoc={session.doc}
             onChange={(doc) => {
               codeRef.current = doc;
               writer.schedule(doc);

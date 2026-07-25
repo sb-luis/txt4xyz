@@ -1,13 +1,14 @@
 import { z } from "zod";
 
-const STORAGE_KEY = "txt4xyz:doc";
+export const ROOT_DOC_KEY = "txt4xyz:doc";
+
 const DEBOUNCE_MS = 500;
 
 const storedDocSchema = z.string();
 
-export function readStoredDoc(): string | null {
+export function readStoredDoc(key: string): string | null {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(key);
     if (raw === null) return null;
     const parsed = storedDocSchema.safeParse(raw);
     return parsed.success ? parsed.data : null;
@@ -16,15 +17,18 @@ export function readStoredDoc(): string | null {
   }
 }
 
-function writeStoredDoc(doc: string): void {
+function writeStoredDoc(key: string, doc: string): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, doc);
+    window.localStorage.setItem(key, doc);
   } catch {
     // Storage can be full or disabled (Safari private mode); persistence is best-effort.
   }
 }
 
-export function createDebouncedDocWriter(delayMs = DEBOUNCE_MS): {
+export function createDebouncedDocWriter(
+  key: string,
+  delayMs = DEBOUNCE_MS,
+): {
   schedule: (doc: string) => void;
   cancel: () => void;
 } {
@@ -35,7 +39,7 @@ export function createDebouncedDocWriter(delayMs = DEBOUNCE_MS): {
       if (timer !== null) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = null;
-        writeStoredDoc(doc);
+        writeStoredDoc(key, doc);
       }, delayMs);
     },
     cancel() {

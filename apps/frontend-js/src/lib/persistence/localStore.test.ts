@@ -10,20 +10,20 @@ describe("readStoredDoc", () => {
   });
 
   it("returns null when nothing is stored", () => {
-    expect(readStoredDoc()).toBeNull();
+    expect(readStoredDoc(STORAGE_KEY)).toBeNull();
   });
 
   it("returns the stored document", () => {
     window.localStorage.setItem(STORAGE_KEY, "print('hi')");
-    expect(readStoredDoc()).toBe("print('hi')");
+    expect(readStoredDoc(STORAGE_KEY)).toBe("print('hi')");
   });
 
   it("returns null instead of throwing when localStorage.getItem throws", () => {
     vi.spyOn(window.localStorage.__proto__, "getItem").mockImplementation(() => {
       throw new Error("SecurityError");
     });
-    expect(() => readStoredDoc()).not.toThrow();
-    expect(readStoredDoc()).toBeNull();
+    expect(() => readStoredDoc(STORAGE_KEY)).not.toThrow();
+    expect(readStoredDoc(STORAGE_KEY)).toBeNull();
   });
 });
 
@@ -39,7 +39,7 @@ describe("createDebouncedDocWriter", () => {
   });
 
   it("coalesces rapid schedule calls into a single write", () => {
-    const writer = createDebouncedDocWriter(500);
+    const writer = createDebouncedDocWriter(STORAGE_KEY, 500);
 
     writer.schedule("a");
     vi.advanceTimersByTime(100);
@@ -58,14 +58,14 @@ describe("createDebouncedDocWriter", () => {
     vi.spyOn(window.localStorage.__proto__, "setItem").mockImplementation(() => {
       throw new Error("QuotaExceededError");
     });
-    const writer = createDebouncedDocWriter(500);
+    const writer = createDebouncedDocWriter(STORAGE_KEY, 500);
 
     writer.schedule("x");
     expect(() => vi.advanceTimersByTime(500)).not.toThrow();
   });
 
   it("cancel prevents a pending write", () => {
-    const writer = createDebouncedDocWriter(500);
+    const writer = createDebouncedDocWriter(STORAGE_KEY, 500);
     writer.schedule("should-not-persist");
     writer.cancel();
     vi.advanceTimersByTime(1000);
