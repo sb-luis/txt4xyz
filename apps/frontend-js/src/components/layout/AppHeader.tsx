@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { RunnerStatus } from "@/lib/python/runner";
+import { buildShareUrl } from "@/lib/persistence/shareLink";
 
 const STATUS_LABEL: Record<RunnerStatus, string> = {
   loading: "loading runtime…",
@@ -11,9 +13,23 @@ export interface AppHeaderProps {
   status: RunnerStatus;
   onRun: () => void;
   onStop: () => void;
+  getCode: () => string;
 }
 
-export function AppHeader({ status, onRun, onStop }: AppHeaderProps) {
+export function AppHeader({ status, onRun, onStop, getCode }: AppHeaderProps) {
+  const [shareLabel, setShareLabel] = useState<"Share" | "Copied!" | "Copy failed">("Share");
+
+  const handleShare = async () => {
+    const url = buildShareUrl(getCode());
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareLabel("Copied!");
+    } catch {
+      setShareLabel("Copy failed");
+    }
+    window.setTimeout(() => setShareLabel("Share"), 1500);
+  };
+
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-app-border bg-app-surface px-4 py-3">
       <div className="flex items-baseline gap-3 overflow-hidden">
@@ -31,6 +47,13 @@ export function AppHeader({ status, onRun, onStop }: AppHeaderProps) {
         >
           {STATUS_LABEL[status]}
         </span>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="rounded border border-app-border px-3 py-1 font-mono text-xs text-app-fg"
+        >
+          {shareLabel}
+        </button>
         <button
           type="button"
           disabled={status !== "ready"}
