@@ -90,6 +90,18 @@ Carried over from `reference/` — parity is deliberate, since one person mainta
 - Colocated `_test.go` files.
 - Comments explain **why**, not what.
 
+### Comments — applies to every language
+
+**Avoid comments at all costs.** Default to none. Code that needs a comment to be readable is
+usually code that needs renaming or restructuring instead.
+
+Write one only for something genuinely non-obvious that the code cannot say itself — a
+non-intuitive constraint, a deliberate divergence, a subtle failure mode — and keep it to one or
+two lines. Never write banner/section dividers, restatements of the next line, or narration of
+what a config option obviously does.
+
+Delete comments that no longer earn their place when you touch surrounding code.
+
 ### Websocket relay — non-negotiable
 
 The server relays **opaque binary blobs** and has no CRDT logic. Three rules, each a silent
@@ -111,5 +123,20 @@ API, an unplanned dependency — **stop and report back** rather than inventing 
 
 - After a coherent piece of work, suggest a Conventional Commits-style message. **Never run
   `git commit` yourself.**
-- Durable project notes belong in this repo (`plan/`, this file, `docs/`) rather than in session
-  memory.
+- Durable project notes belong in this repo (`plan/`, this file) rather than in session memory.
+
+## Documentation
+
+**Do not write documentation files without explicit approval from the user.** No `docs/`, no
+READMEs, no guides — prose that restates what the code already says is repo bloat at this stage.
+This is revisitable later (the portfolio README in `plan/07-portfolio.md` is a deliberate,
+approved exception when Phase 4 arrives), but it is not a default.
+
+If you genuinely need to record something for a future session, write it under **`plan/notes/`**.
+`plan/` and `reference/` are gitignored, so notes there stay out of the committed tree.
+
+## Workspace boundary
+
+**Read and write only inside this repository.** Do not read from or write to paths outside the
+project root — no home directory, no system temp, no sibling checkouts. `reference/` is inside
+the repo and remains readable (read-only, as above).

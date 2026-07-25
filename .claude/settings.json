@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint *)",
+      "Bash(npx eslint *)",
+      "Bash(npm test)",
+      "Bash(npm test *)",
+      "Bash(npx vitest run *)",
+      "Bash(npm run build)",
+      "Bash(npm ci)",
+      "Bash(npm ci *)",
+      "Bash(npm view *)",
+      "Bash(gofmt *)",
+      "Bash(go vet *)",
+      "Bash(go build *)",
+      "Bash(go test *)",
+      "Bash(go fmt *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git ls-files *)"
+    ],
+    "deny": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(npm run dev *)",
+      "Bash(npm run test:watch *)",
+      "Bash(vite *)",
+      "Edit(reference/**)",
+      "Write(reference/**)"
+    ]
+  }
+}
