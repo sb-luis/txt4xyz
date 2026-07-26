@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_PYODIDE_INDEX_URL?: string;
+  readonly VITE_RELAY_URL?: string;
 }
 
 interface ImportMeta {
