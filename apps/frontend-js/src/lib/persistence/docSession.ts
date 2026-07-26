@@ -1,3 +1,4 @@
+import { readRoomIdFromHash } from "@/lib/collab/room";
 import { ROOT_DOC_KEY, readStoredDoc } from "./localStore";
 import { decodeCodeFromFragment } from "./shareLink";
 
@@ -18,6 +19,10 @@ function fragmentKey(fragment: string): string {
 // overwrites the reader's own scratchpad, and their edits to that link survive
 // a reload while the URL stays intact and copyable.
 export function resolveDocSession(defaultDoc: string): DocSession {
+  if (readRoomIdFromHash(window.location.hash) !== null) {
+    return { key: ROOT_DOC_KEY, doc: readStoredDoc(ROOT_DOC_KEY) ?? defaultDoc };
+  }
+
   const fragment = window.location.hash.slice(1);
   const shared = decodeCodeFromFragment(fragment);
 

@@ -3,15 +3,18 @@ import { python } from "@codemirror/lang-python";
 import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
+import { yCollab } from "y-codemirror.next";
 import { useEffect, useRef } from "react";
+import type * as Y from "yjs";
 import { editorHighlightStyle, editorTheme } from "./theme";
 
 export interface CodeEditorProps {
   initialDoc: string;
   onChange: (doc: string) => void;
+  ytext?: Y.Text;
 }
 
-export function CodeEditor({ initialDoc, onChange }: CodeEditorProps) {
+export function CodeEditor({ initialDoc, onChange, ytext }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
 
@@ -23,7 +26,9 @@ export function CodeEditor({ initialDoc, onChange }: CodeEditorProps) {
     if (!containerRef.current) return;
 
     const state = EditorState.create({
-      doc: initialDoc,
+      // yCollab syncs later changes but does not backfill what the Y.Text
+      // already holds, so the initial state must be read from it directly.
+      doc: ytext ? ytext.toString() : initialDoc,
       extensions: [
         lineNumbers(),
         highlightActiveLine(),
@@ -35,6 +40,7 @@ export function CodeEditor({ initialDoc, onChange }: CodeEditorProps) {
         syntaxHighlighting(editorHighlightStyle),
         editorTheme,
         EditorView.lineWrapping,
+        ...(ytext ? [yCollab(ytext, null)] : []),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());
@@ -48,9 +54,11 @@ export function CodeEditor({ initialDoc, onChange }: CodeEditorProps) {
     return () => {
       view.destroy();
     };
-    // Only the very first mount's initialDoc seeds the editor; later prop changes are ignored on purpose.
+    // initialDoc seeds the editor once and later changes to it are ignored on
+    // purpose, but the view must be rebuilt whenever the Y.Text identity
+    // changes, or it stays bound to a document nobody is syncing any more.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ytext]);
 
   return <div ref={containerRef} aria-label="code editor" className="h-full w-full text-sm" />;
 }

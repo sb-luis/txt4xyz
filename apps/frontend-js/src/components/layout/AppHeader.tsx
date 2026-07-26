@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RunnerStatus } from "@/lib/python/runner";
+import type { ConnectionStatus } from "@/lib/collab/provider";
 import { buildShareUrl } from "@/lib/persistence/shareLink";
 
 const STATUS_LABEL: Record<RunnerStatus, string> = {
@@ -9,15 +10,26 @@ const STATUS_LABEL: Record<RunnerStatus, string> = {
   error: "runtime error",
 };
 
+const ROOM_STATUS_LABEL: Record<ConnectionStatus, string> = {
+  connecting: "connecting…",
+  connected: "connected",
+  disconnected: "disconnected",
+};
+
 export interface AppHeaderProps {
   status: RunnerStatus;
   onRun: () => void;
   onStop: () => void;
   getCode: () => string;
+  room?: { status: ConnectionStatus; roomUrl: string } | null;
+  onStartRoom?: () => void;
 }
 
-export function AppHeader({ status, onRun, onStop, getCode }: AppHeaderProps) {
+export function AppHeader({ status, onRun, onStop, getCode, room, onStartRoom }: AppHeaderProps) {
   const [shareLabel, setShareLabel] = useState<"Share" | "Copied!" | "Copy failed">("Share");
+  const [collabLabel, setCollabLabel] = useState<"Collaborate" | "Copied!" | "Copy failed">(
+    "Collaborate",
+  );
 
   const handleShare = async () => {
     const url = buildShareUrl(getCode());
@@ -28,6 +40,20 @@ export function AppHeader({ status, onRun, onStop, getCode }: AppHeaderProps) {
       setShareLabel("Copy failed");
     }
     window.setTimeout(() => setShareLabel("Share"), 1500);
+  };
+
+  const handleCollaborate = async () => {
+    if (room) {
+      try {
+        await navigator.clipboard.writeText(room.roomUrl);
+        setCollabLabel("Copied!");
+      } catch {
+        setCollabLabel("Copy failed");
+      }
+      window.setTimeout(() => setCollabLabel("Collaborate"), 1500);
+      return;
+    }
+    onStartRoom?.();
   };
 
   return (
@@ -47,13 +73,37 @@ export function AppHeader({ status, onRun, onStop, getCode }: AppHeaderProps) {
         >
           {STATUS_LABEL[status]}
         </span>
-        <button
-          type="button"
-          onClick={handleShare}
-          className="rounded border border-app-border px-3 py-1 font-mono text-xs text-app-fg"
-        >
-          {shareLabel}
-        </button>
+        {room && (
+          <span role="status" className="font-mono text-xs text-app-muted">
+            {ROOM_STATUS_LABEL[room.status]}
+          </span>
+        )}
+        {room ? (
+          <button
+            type="button"
+            onClick={handleCollaborate}
+            className="rounded border border-app-border px-3 py-1 font-mono text-xs text-app-fg"
+          >
+            {collabLabel}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="rounded border border-app-border px-3 py-1 font-mono text-xs text-app-fg"
+            >
+              {shareLabel}
+            </button>
+            <button
+              type="button"
+              onClick={handleCollaborate}
+              className="rounded border border-app-border px-3 py-1 font-mono text-xs text-app-fg"
+            >
+              {collabLabel}
+            </button>
+          </>
+        )}
         <button
           type="button"
           disabled={status !== "ready"}

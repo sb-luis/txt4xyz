@@ -6,6 +6,13 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // In production the relay is same-origin, so the client derives its URL from
+  // the page. In dev the page is Vite and the relay is a separate process.
+  server: {
+    proxy: {
+      "/ws": { target: "ws://localhost:4000", ws: true },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

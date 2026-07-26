@@ -76,6 +76,18 @@ describe("resolveDocSession", () => {
     expect(session.doc).toBe("print('my scratchpad')");
   });
 
+  it("does not mistake a room fragment for a compressed code share", () => {
+    // This specific room id happens to decompress to a non-empty garbage string
+    // via lz-string's decoder — proof the collision is real, not hypothetical.
+    window.localStorage.setItem(ROOT_DOC_KEY, "print('my scratchpad')");
+    window.location.hash = "room=bqsrkAkjylvIxRtSBuieVw";
+
+    const session = resolveDocSession(DEFAULT_DOC);
+
+    expect(session.key).toBe(ROOT_DOC_KEY);
+    expect(session.doc).toBe("print('my scratchpad')");
+  });
+
   it("gives two different links two different keys", () => {
     openSharedLink("print('link one')");
     const one = resolveDocSession(DEFAULT_DOC).key;
