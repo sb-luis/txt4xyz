@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RunnerStatus } from "@/lib/python/runner";
 import type { ConnectionStatus } from "@/lib/collab/provider";
+import type { Participant } from "@/lib/collab/useRoom";
 import { buildShareUrl } from "@/lib/persistence/shareLink";
 
 const STATUS_LABEL: Record<RunnerStatus, string> = {
@@ -21,7 +22,7 @@ export interface AppHeaderProps {
   onRun: () => void;
   onStop: () => void;
   getCode: () => string;
-  room?: { status: ConnectionStatus; roomUrl: string } | null;
+  room?: { status: ConnectionStatus; roomUrl: string; participants: Participant[] } | null;
   onStartRoom?: () => void;
 }
 
@@ -77,6 +78,20 @@ export function AppHeader({ status, onRun, onStop, getCode, room, onStartRoom }:
           <span role="status" className="font-mono text-xs text-app-muted">
             {ROOM_STATUS_LABEL[room.status]}
           </span>
+        )}
+        {room && room.participants.length > 0 && (
+          <ul aria-label="participants" className="flex items-center gap-1.5">
+            {room.participants.map((participant) => (
+              <li
+                key={participant.clientId}
+                title={participant.name}
+                className="flex h-5 w-5 items-center justify-center rounded-full font-mono text-[10px] font-semibold text-app-bg"
+                style={{ backgroundColor: participant.color }}
+              >
+                {participant.name.slice(0, 1).toUpperCase()}
+              </li>
+            ))}
+          </ul>
         )}
         {room ? (
           <button

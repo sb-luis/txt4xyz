@@ -3,18 +3,20 @@ import { python } from "@codemirror/lang-python";
 import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
-import { yCollab } from "y-codemirror.next";
+import { yCollab, yRemoteSelectionsTheme } from "y-codemirror.next";
 import { useEffect, useRef } from "react";
 import type * as Y from "yjs";
+import type * as awarenessProtocol from "y-protocols/awareness";
 import { editorHighlightStyle, editorTheme } from "./theme";
 
 export interface CodeEditorProps {
   initialDoc: string;
   onChange: (doc: string) => void;
   ytext?: Y.Text;
+  awareness?: awarenessProtocol.Awareness | null;
 }
 
-export function CodeEditor({ initialDoc, onChange, ytext }: CodeEditorProps) {
+export function CodeEditor({ initialDoc, onChange, ytext, awareness }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
 
@@ -39,8 +41,9 @@ export function CodeEditor({ initialDoc, onChange, ytext }: CodeEditorProps) {
         python(),
         syntaxHighlighting(editorHighlightStyle),
         editorTheme,
+        yRemoteSelectionsTheme,
         EditorView.lineWrapping,
-        ...(ytext ? [yCollab(ytext, null)] : []),
+        ...(ytext ? [yCollab(ytext, awareness ?? null)] : []),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());

@@ -30,7 +30,12 @@ export function AppShell() {
   const [writer] = useState(() =>
     session === null ? null : createDebouncedDocWriter(session.key),
   );
-  const { ytext, status: roomStatus } = useRoom(roomId, room?.seed ?? null);
+  const {
+    ytext,
+    awareness,
+    status: roomStatus,
+    participants,
+  } = useRoom(roomId, room?.seed ?? null);
 
   useEffect(() => {
     return () => writer?.cancel();
@@ -70,7 +75,11 @@ export function AppShell() {
         onRun={handleRun}
         onStop={stop}
         getCode={() => codeRef.current}
-        room={roomId === null ? null : { status: roomStatus, roomUrl: roomUrl(roomId) }}
+        room={
+          roomId === null
+            ? null
+            : { status: roomStatus, roomUrl: roomUrl(roomId), participants }
+        }
         onStartRoom={handleStartRoom}
       />
       <main className="flex min-h-0 flex-1 flex-col gap-px overflow-hidden bg-app-border md:flex-row">
@@ -88,6 +97,7 @@ export function AppShell() {
               key={roomId}
               initialDoc=""
               ytext={ytext}
+              awareness={awareness}
               onChange={(doc) => {
                 codeRef.current = doc;
               }}

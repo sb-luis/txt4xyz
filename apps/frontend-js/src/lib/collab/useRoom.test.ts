@@ -34,3 +34,27 @@ describe("useRoom seeding", () => {
     expect(result.current.ytext?.toString()).toBe("");
   });
 });
+
+describe("useRoom awareness", () => {
+  it("lists the local user as a participant as soon as the room is joined", () => {
+    const { result } = renderHook(() => useRoom("newroom"));
+
+    expect(result.current.awareness).not.toBeNull();
+    expect(result.current.participants).toHaveLength(1);
+    expect(result.current.participants[0].name).toEqual(expect.any(String));
+    expect(result.current.participants[0].color).toEqual(expect.any(String));
+  });
+
+  it("clears participants and awareness when leaving the room", () => {
+    const { result, rerender } = renderHook(({ roomId }: { roomId: string | null }) => useRoom(roomId), {
+      initialProps: { roomId: "newroom" as string | null },
+    });
+
+    expect(result.current.participants).toHaveLength(1);
+
+    rerender({ roomId: null });
+
+    expect(result.current.participants).toHaveLength(0);
+    expect(result.current.awareness).toBeNull();
+  });
+});

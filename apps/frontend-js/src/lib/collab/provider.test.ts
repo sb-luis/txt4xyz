@@ -1,8 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import * as awarenessProtocol from "y-protocols/awareness";
+import * as encoding from "lib0/encoding";
+import * as decoding from "lib0/decoding";
 import { SyncProvider, type WebSocketLike } from "./provider";
 import type { Codec } from "./codec";
 import { backoffDelay, defaultBackoffOptions } from "./backoff";
+
+type NodeProcessLike = {
+  on(event: "unhandledRejection", listener: (reason: unknown) => void): void;
+  off(event: "unhandledRejection", listener: (reason: unknown) => void): void;
+};
+
+function newDocAndAwareness() {
+  const doc = new Y.Doc();
+  return { doc, awareness: new awarenessProtocol.Awareness(doc) };
+}
 
 class FakeSocket implements WebSocketLike {
   binaryType = "";
@@ -46,7 +59,7 @@ describe("room id framing", () => {
   it("sends the room id as the very first frame, before any sync traffic", async () => {
     const sockets: FakeSocket[] = [];
     const provider = new SyncProvider({
-      doc: new Y.Doc(),
+      ...newDocAndAwareness(),
       url: "wss://example.invalid/relay",
       roomId: "top-secret-room",
       createWebSocket: () => {
@@ -69,7 +82,7 @@ describe("room id framing", () => {
     const sockets: FakeSocket[] = [];
     let requestedUrl = "";
     const provider = new SyncProvider({
-      doc: new Y.Doc(),
+      ...newDocAndAwareness(),
       url: "wss://example.invalid/relay",
       roomId: "top-secret-room",
       createWebSocket: (url) => {
@@ -93,7 +106,7 @@ describe("reconnect backoff", () => {
     vi.useFakeTimers();
 
     const provider = new SyncProvider({
-      doc: new Y.Doc(),
+      ...newDocAndAwareness(),
       url: "wss://example.invalid/relay",
       roomId: "rejected",
       random: () => 1,
@@ -131,7 +144,7 @@ describe("the encode/decode seam", () => {
     };
 
     const provider = new SyncProvider({
-      doc: new Y.Doc(),
+      ...newDocAndAwareness(),
       url: "wss://example.invalid/relay",
       roomId: "routable-room",
       codec: encrypting,
@@ -181,6 +194,7 @@ describe("the encode/decode seam", () => {
 
     const providerA = new SyncProvider({
       doc: docA,
+      awareness: new awarenessProtocol.Awareness(docA),
       url: "wss://example.invalid/relay",
       roomId: "room",
       codec: markerCodec(callsA),
@@ -191,6 +205,7 @@ describe("the encode/decode seam", () => {
     });
     const providerB = new SyncProvider({
       doc: docB,
+      awareness: new awarenessProtocol.Awareness(docB),
       url: "wss://example.invalid/relay",
       roomId: "room",
       codec: markerCodec(callsB),
@@ -263,7 +278,7 @@ describe("reconnect backoff", () => {
     vi.useFakeTimers();
     const sockets: FakeSocket[] = [];
     const provider = new SyncProvider({
-      doc: new Y.Doc(),
+      ...newDocAndAwareness(),
       url: "wss://example.invalid/relay",
       roomId: "room",
       random: () => 0.5,
@@ -308,8 +323,13 @@ describe("destroy", () => {
     vi.useFakeTimers();
     const sockets: FakeSocket[] = [];
     const doc = new Y.Doc();
+    // Awareness itself keeps an outdated-state check interval alive; destroy
+    // it explicitly (as useRoom does) so it doesn't skew the timer count this
+    // test cares about.
+    const awareness = new awarenessProtocol.Awareness(doc);
     provider = new SyncProvider({
       doc,
+      awareness,
       url: "wss://example.invalid/relay",
       roomId: "room",
       createWebSocket: () => {
@@ -324,6 +344,7 @@ describe("destroy", () => {
     expect(vi.getTimerCount()).toBeGreaterThan(0);
 
     provider.destroy();
+    awareness.destroy();
 
     expect(vi.getTimerCount()).toBe(0);
     expect(sockets.length).toBe(1);
@@ -338,10 +359,10 @@ describe("destroy", () => {
     expect(provider.status).toBe("disconnected");
   });
 
-  it("closes a still-open socket", () => {
+  it("closes a still-open socket once the queued awareness removal frame is written", async () => {
     const sockets: FakeSocket[] = [];
     provider = new SyncProvider({
-      doc: new Y.Doc(),
+      ...newDocAndAwareness(),
       url: "wss://example.invalid/relay",
       roomId: "room",
       createWebSocket: () => {
@@ -352,10 +373,183 @@ describe("destroy", () => {
     });
 
     sockets[0].open();
+    await flushMicrotasks();
     provider.destroy();
+    // The socket must not close synchronously: destroy() queues an awareness
+    // removal frame on the async send chain, and closing early would drop it.
+    await flushMicrotasks();
 
     expect(sockets[0].closeCalls).toBe(1);
     expect(sockets[0].onopen).toBeNull();
     expect(sockets[0].onmessage).toBeNull();
+  });
+});
+
+function connectPeers() {
+  const { doc: docA, awareness: awarenessA } = newDocAndAwareness();
+  const { doc: docB, awareness: awarenessB } = newDocAndAwareness();
+  let socketA!: FakeSocket;
+  let socketB!: FakeSocket;
+
+  const providerA = new SyncProvider({
+    doc: docA,
+    awareness: awarenessA,
+    url: "wss://example.invalid/relay",
+    roomId: "room",
+    createWebSocket: () => {
+      socketA = new FakeSocket();
+      return socketA;
+    },
+  });
+  const providerB = new SyncProvider({
+    doc: docB,
+    awareness: awarenessB,
+    url: "wss://example.invalid/relay",
+    roomId: "room",
+    createWebSocket: () => {
+      socketB = new FakeSocket();
+      return socketB;
+    },
+  });
+
+  socketA.open();
+  socketB.open();
+
+  // A real relay authenticates and consumes each peer's first frame (the room
+  // id) rather than forwarding it — this fake relay does the same.
+  socketA.send = function (data: Uint8Array) {
+    FakeSocket.prototype.send.call(this, data);
+    if (this.sent.length > 1) socketB.receive(data);
+  };
+  socketB.send = function (data: Uint8Array) {
+    FakeSocket.prototype.send.call(this, data);
+    if (this.sent.length > 1) socketA.receive(data);
+  };
+
+  return { docA, docB, awarenessA, awarenessB, providerA, providerB };
+}
+
+describe("message envelope", () => {
+  it("routes an awareness frame and a sync frame across the same socket to the right handler", async () => {
+    const { docA, docB, awarenessA, awarenessB, providerA, providerB } = connectPeers();
+    await flushMicrotasks();
+
+    docA.getText("shared").insert(0, "hello");
+    awarenessA.setLocalStateField("user", { name: "ava", color: "oklch(0.8 0.1 200)" });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    expect(docB.getText("shared").toString()).toBe("hello");
+    expect(awarenessB.getStates().get(docA.clientID)?.user).toEqual({
+      name: "ava",
+      color: "oklch(0.8 0.1 200)",
+    });
+
+    providerA.destroy();
+    providerB.destroy();
+  });
+
+  it("ignores an unknown message type instead of throwing", async () => {
+    const { doc, awareness } = newDocAndAwareness();
+    let socket!: FakeSocket;
+    const provider = new SyncProvider({
+      doc,
+      awareness,
+      url: "wss://example.invalid/relay",
+      roomId: "room",
+      createWebSocket: () => {
+        socket = new FakeSocket();
+        return socket;
+      },
+    });
+
+    socket.open();
+    await flushMicrotasks();
+
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, 7);
+    encoding.writeVarString(encoder, "a future run-broadcast message");
+
+    // handleMessage runs detached from the onmessage callback (`void this.handleMessage(...)`),
+    // so a throw inside it surfaces as an unhandled rejection rather than a
+    // synchronous exception — that's what an unknown type must not produce.
+    const nodeProcess = (globalThis as { process?: NodeProcessLike }).process;
+    const rejections: unknown[] = [];
+    const onRejection = (reason: unknown) => rejections.push(reason);
+    nodeProcess?.on("unhandledRejection", onRejection);
+
+    socket.receive(encoding.toUint8Array(encoder));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    nodeProcess?.off("unhandledRejection", onRejection);
+
+    expect(rejections).toEqual([]);
+    expect(provider.status).toBe("connected");
+    provider.destroy();
+  });
+});
+
+describe("awareness coalescing", () => {
+  it("coalesces a burst of local awareness changes into a single frame, but never coalesces sync updates", async () => {
+    const { doc, awareness } = newDocAndAwareness();
+    let socket!: FakeSocket;
+    const provider = new SyncProvider({
+      doc,
+      awareness,
+      url: "wss://example.invalid/relay",
+      roomId: "room",
+      createWebSocket: () => {
+        socket = new FakeSocket();
+        return socket;
+      },
+    });
+
+    socket.open();
+    await flushMicrotasks();
+
+    const sentBeforeBurst = socket.sent.length;
+    for (let i = 0; i < 5; i++) {
+      awareness.setLocalStateField("cursor", { pos: i });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(socket.sent.length - sentBeforeBurst).toBe(1);
+
+    const sentBeforeSyncBurst = socket.sent.length;
+    for (let i = 0; i < 5; i++) {
+      doc.getText("shared").insert(i, "x");
+    }
+    await flushMicrotasks();
+    expect(socket.sent.length - sentBeforeSyncBurst).toBe(5);
+
+    provider.destroy();
+  });
+});
+
+describe("no ghost cursors", () => {
+  it("removes the local awareness state and broadcasts the removal when destroyed", async () => {
+    const { doc, awareness } = newDocAndAwareness();
+    let socket!: FakeSocket;
+    const provider = new SyncProvider({
+      doc,
+      awareness,
+      url: "wss://example.invalid/relay",
+      roomId: "room",
+      createWebSocket: () => {
+        socket = new FakeSocket();
+        return socket;
+      },
+    });
+
+    socket.open();
+    await flushMicrotasks();
+    expect(awareness.getStates().has(doc.clientID)).toBe(true);
+
+    provider.destroy();
+    await flushMicrotasks();
+
+    expect(awareness.getStates().has(doc.clientID)).toBe(false);
+
+    const lastFrame = socket.sent[socket.sent.length - 1];
+    const decoder = decoding.createDecoder(lastFrame);
+    expect(decoding.readVarUint(decoder)).toBe(1);
   });
 });

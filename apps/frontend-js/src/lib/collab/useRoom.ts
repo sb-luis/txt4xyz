@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import * as Y from "yjs";
+import * as awarenessProtocol from "y-protocols/awareness";
 import { SyncProvider, type ConnectionStatus } from "./provider";
+import { generateIdentity } from "./identity";
 
 export function relayUrl(): string {
   const configured = import.meta.env.VITE_RELAY_URL;
@@ -10,12 +12,43 @@ export function relayUrl(): string {
   return `${protocol}//${window.location.host}/ws`;
 }
 
-export interface UseRoomResult {
-  ytext: Y.Text | null;
-  status: ConnectionStatus;
+export interface Participant {
+  clientId: number;
+  name: string;
+  color: string;
 }
 
-const DISCONNECTED_SNAPSHOT: UseRoomResult = { ytext: null, status: "disconnected" };
+export interface UseRoomResult {
+  ytext: Y.Text | null;
+  awareness: awarenessProtocol.Awareness | null;
+  status: ConnectionStatus;
+  participants: Participant[];
+}
+
+const EMPTY_PARTICIPANTS: Participant[] = [];
+
+const DISCONNECTED_SNAPSHOT: UseRoomResult = {
+  ytext: null,
+  awareness: null,
+  status: "disconnected",
+  participants: EMPTY_PARTICIPANTS,
+};
+
+function readParticipants(awareness: awarenessProtocol.Awareness): Participant[] {
+  const participants: Participant[] = [];
+  awareness.getStates().forEach((state, clientId) => {
+    const user = (state as { user?: { name?: unknown; color?: unknown } } | null)?.user;
+    if (typeof user?.name !== "string" || typeof user?.color !== "string") return;
+    participants.push({ clientId, name: user.name, color: user.color });
+  });
+  participants.sort((a, b) => a.clientId - b.clientId);
+  return participants;
+}
+
+function sameParticipants(a: Participant[], b: Participant[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((p, i) => p.clientId === b[i].clientId && p.name === b[i].name && p.color === b[i].color);
+}
 
 export function useRoom(roomId: string | null, seed: string | null = null): UseRoomResult {
   const snapshotRef = useRef<UseRoomResult>(DISCONNECTED_SNAPSHOT);
@@ -46,9 +79,26 @@ export function useRoom(roomId: string | null, seed: string | null = null): UseR
     // duplicate. Seeding on join would append a second copy of the document.
     if (seed !== null) ytext.insert(0, seed);
 
-    const provider = new SyncProvider({ doc, url: relayUrl(), roomId });
-    snapshotRef.current = { ytext, status: provider.status };
+    // Lifetime matches the room exactly: created and torn down alongside the
+    // doc, so no cursor from a previous room can leak into a new one.
+    const awareness = new awarenessProtocol.Awareness(doc);
+    const identity = generateIdentity();
+    awareness.setLocalStateField("user", identity);
+
+    let participants = readParticipants(awareness);
+
+    const provider = new SyncProvider({ doc, awareness, url: relayUrl(), roomId });
+    snapshotRef.current = { ytext, awareness, status: provider.status, participants };
     notify();
+
+    const onAwarenessChange = () => {
+      const next = readParticipants(awareness);
+      if (sameParticipants(participants, next)) return;
+      participants = next;
+      snapshotRef.current = { ...snapshotRef.current, participants };
+      notify();
+    };
+    awareness.on("change", onAwarenessChange);
 
     const unsubscribe = provider.onStatusChange((status) => {
       snapshotRef.current = { ...snapshotRef.current, status };
@@ -56,8 +106,10 @@ export function useRoom(roomId: string | null, seed: string | null = null): UseR
     });
 
     return () => {
+      awareness.off("change", onAwarenessChange);
       unsubscribe();
       provider.destroy();
+      awareness.destroy();
       doc.destroy();
       snapshotRef.current = DISCONNECTED_SNAPSHOT;
       notify();
