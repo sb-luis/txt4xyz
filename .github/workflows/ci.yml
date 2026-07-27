@@ -37,34 +37,34 @@ jobs:
       - name: Build
         run: npm run build
 
-  # Phase 2: Go websocket relay (apps/backend-go). Uncomment once that app exists.
-  # backend:
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: apps/backend-go
-  #   steps:
-  #     - uses: actions/checkout@v7.0.1
-  #
-  #     - uses: actions/setup-go@vX
-  #       with:
-  #         go-version: "X.Y.Z"
-  #
-  #     # Verification pipeline: gofmt -l . && go vet ./... && go build ./... && go test ./...
-  #     # A non-empty `gofmt -l` output is a failure.
-  #     - name: Format check
-  #       run: |
-  #         fmt_out=$(gofmt -l .)
-  #         if [ -n "$fmt_out" ]; then
-  #           echo "$fmt_out"
-  #           exit 1
-  #         fi
-  #
-  #     - name: Vet
-  #       run: go vet ./...
-  #
-  #     - name: Build
-  #       run: go build ./...
-  #
-  #     - name: Test
-  #       run: go test ./...
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend-go
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: apps/backend-go/go.mod
+          cache-dependency-path: apps/backend-go/go.sum
+
+      - name: Format check
+        run: |
+          fmt_out=$(gofmt -l .)
+          if [ -n "$fmt_out" ]; then
+            echo "$fmt_out"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      # -race because every bug this relay can have is a concurrency bug: it is
+      # a fan-out hub with a goroutine per connection and shared room maps.
+      - name: Test
+        run: go test -race ./...

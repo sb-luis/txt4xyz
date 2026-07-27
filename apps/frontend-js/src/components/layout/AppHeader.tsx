@@ -64,7 +64,7 @@ export function AppHeader({ status, onRun, onStop, getCode, room, onStartRoom }:
           txt4.xyz
         </span>
         <span className="truncate text-sm text-app-muted">
-          collaborative Python scratchpad — runs in your browser
+          collaborative Python scratchpad 
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-3">
