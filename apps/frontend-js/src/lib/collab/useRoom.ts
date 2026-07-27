@@ -3,6 +3,13 @@ import * as Y from "yjs";
 import * as awarenessProtocol from "y-protocols/awareness";
 import { SyncProvider, type ConnectionStatus } from "./provider";
 import { generateIdentity } from "./identity";
+import { createDebouncedRoomDocWriter, readStoredRoomDoc } from "@/lib/persistence/localStore";
+
+// Budget for a peer to answer sync step 1 and announce itself: a full relay
+// round trip plus a coalesce round. Sized for a transatlantic RTT rather than
+// localhost, because concluding "alone" too early restores stale local text
+// into a room that already has a live participant.
+export const RESTORE_GRACE_MS = 1_200;
 
 export function relayUrl(): string {
   const configured = import.meta.env.VITE_RELAY_URL;
@@ -50,7 +57,7 @@ function sameParticipants(a: Participant[], b: Participant[]): boolean {
   return a.every((p, i) => p.clientId === b[i].clientId && p.name === b[i].name && p.color === b[i].color);
 }
 
-export function useRoom(roomId: string | null, seed: string | null = null): UseRoomResult {
+export function useRoom(roomId: string | null): UseRoomResult {
   const snapshotRef = useRef<UseRoomResult>(DISCONNECTED_SNAPSHOT);
   const listenersRef = useRef(new Set<() => void>());
 
@@ -74,10 +81,6 @@ export function useRoom(roomId: string | null, seed: string | null = null): UseR
 
     const doc = new Y.Doc();
     const ytext = doc.getText("shared");
-    // Only safe because the caller passes a seed exclusively for a room it just
-    // created: an id nobody else can hold yet, so there is no remote text to
-    // duplicate. Seeding on join would append a second copy of the document.
-    if (seed !== null) ytext.insert(0, seed);
 
     // Lifetime matches the room exactly: created and torn down alongside the
     // doc, so no cursor from a previous room can leak into a new one.
@@ -91,6 +94,38 @@ export function useRoom(roomId: string | null, seed: string | null = null): UseR
     snapshotRef.current = { ytext, awareness, status: provider.status, participants };
     notify();
 
+    const writer = createDebouncedRoomDocWriter(roomId);
+    const onDocChange = () => writer.schedule(ytext.toString());
+    ytext.observe(onDocChange);
+
+    let restoreScheduled = false;
+    let restoreAttempted = false;
+    let restoreTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // Restore only once we have proven we're alone: still empty, no other
+    // participant, and the grace period has elapsed. Any of those failing
+    // means a peer may hold the real document, and restoring would duplicate
+    // it — the exact bug the old `seed` path in this hook already hit once.
+    const attemptRestore = () => {
+      restoreAttempted = true;
+      if (ytext.length > 0) return;
+      const others = readParticipants(awareness).filter((p) => p.clientId !== doc.clientID);
+      if (others.length > 0) return;
+      const stored = readStoredRoomDoc(roomId);
+      if (stored !== null && stored.length > 0) {
+        ytext.insert(0, stored);
+      }
+    };
+
+    const scheduleRestoreCheck = () => {
+      if (restoreScheduled || restoreAttempted) return;
+      restoreScheduled = true;
+      restoreTimer = setTimeout(() => {
+        restoreTimer = null;
+        attemptRestore();
+      }, RESTORE_GRACE_MS);
+    };
+
     const onAwarenessChange = () => {
       const next = readParticipants(awareness);
       if (sameParticipants(participants, next)) return;
@@ -103,9 +138,13 @@ export function useRoom(roomId: string | null, seed: string | null = null): UseR
     const unsubscribe = provider.onStatusChange((status) => {
       snapshotRef.current = { ...snapshotRef.current, status };
       notify();
+      if (status === "connected") scheduleRestoreCheck();
     });
 
     return () => {
+      if (restoreTimer !== null) clearTimeout(restoreTimer);
+      writer.cancel();
+      ytext.unobserve(onDocChange);
       awareness.off("change", onAwarenessChange);
       unsubscribe();
       provider.destroy();
@@ -114,7 +153,7 @@ export function useRoom(roomId: string | null, seed: string | null = null): UseR
       snapshotRef.current = DISCONNECTED_SNAPSHOT;
       notify();
     };
-  }, [roomId, seed, notify]);
+  }, [roomId, notify]);
 
   return useSyncExternalStore(subscribe, getSnapshot);
 }

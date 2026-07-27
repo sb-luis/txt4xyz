@@ -1,8 +1,6 @@
-import { useState } from "react";
 import type { RunnerStatus } from "@/lib/python/runner";
 import type { ConnectionStatus } from "@/lib/collab/provider";
 import type { Participant } from "@/lib/collab/useRoom";
-import { buildShareUrl } from "@/lib/persistence/shareLink";
 
 const STATUS_LABEL: Record<RunnerStatus, string> = {
   loading: "loading runtime…",
@@ -21,42 +19,10 @@ export interface AppHeaderProps {
   status: RunnerStatus;
   onRun: () => void;
   onStop: () => void;
-  getCode: () => string;
-  room?: { status: ConnectionStatus; roomUrl: string; participants: Participant[] } | null;
-  onStartRoom?: () => void;
+  room: { status: ConnectionStatus; participants: Participant[] };
 }
 
-export function AppHeader({ status, onRun, onStop, getCode, room, onStartRoom }: AppHeaderProps) {
-  const [shareLabel, setShareLabel] = useState<"Share" | "Copied!" | "Copy failed">("Share");
-  const [collabLabel, setCollabLabel] = useState<"Collaborate" | "Copied!" | "Copy failed">(
-    "Collaborate",
-  );
-
-  const handleShare = async () => {
-    const url = buildShareUrl(getCode());
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareLabel("Copied!");
-    } catch {
-      setShareLabel("Copy failed");
-    }
-    window.setTimeout(() => setShareLabel("Share"), 1500);
-  };
-
-  const handleCollaborate = async () => {
-    if (room) {
-      try {
-        await navigator.clipboard.writeText(room.roomUrl);
-        setCollabLabel("Copied!");
-      } catch {
-        setCollabLabel("Copy failed");
-      }
-      window.setTimeout(() => setCollabLabel("Collaborate"), 1500);
-      return;
-    }
-    onStartRoom?.();
-  };
-
+export function AppHeader({ status, onRun, onStop, room }: AppHeaderProps) {
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-app-border bg-app-surface px-4 py-3">
       <div className="flex items-baseline gap-3 overflow-hidden">
@@ -64,22 +30,21 @@ export function AppHeader({ status, onRun, onStop, getCode, room, onStartRoom }:
           txt4.xyz
         </span>
         <span className="truncate text-sm text-app-muted">
-          collaborative Python scratchpad 
+          collaborative Python scratchpad
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <span
           role="status"
+          aria-label="runtime status"
           className={`font-mono text-xs ${status === "error" ? "text-app-error" : "text-app-muted"}`}
         >
           {STATUS_LABEL[status]}
         </span>
-        {room && (
-          <span role="status" className="font-mono text-xs text-app-muted">
-            {ROOM_STATUS_LABEL[room.status]}
-          </span>
-        )}
-        {room && room.participants.length > 0 && (
+        <span role="status" aria-label="room status" className="font-mono text-xs text-app-muted">
+          {ROOM_STATUS_LABEL[room.status]}
+        </span>
+        {room.participants.length > 0 && (
           <ul aria-label="participants" className="flex items-center gap-1.5">
             {room.participants.map((participant) => (
               <li
@@ -92,32 +57,6 @@ export function AppHeader({ status, onRun, onStop, getCode, room, onStartRoom }:
               </li>
             ))}
           </ul>
-        )}
-        {room ? (
-          <button
-            type="button"
-            onClick={handleCollaborate}
-            className="rounded border border-app-border px-3 py-1 font-mono text-xs text-app-fg"
-          >
-            {collabLabel}
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="rounded border border-app-border px-3 py-1 font-mono text-xs text-app-fg"
-            >
-              {shareLabel}
-            </button>
-            <button
-              type="button"
-              onClick={handleCollaborate}
-              className="rounded border border-app-border px-3 py-1 font-mono text-xs text-app-fg"
-            >
-              {collabLabel}
-            </button>
-          </>
         )}
         <button
           type="button"

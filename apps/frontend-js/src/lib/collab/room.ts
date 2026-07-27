@@ -34,3 +34,17 @@ export function roomUrl(roomId: string): string {
   url.hash = `room=${roomId}`;
   return url.toString();
 }
+
+// replaceState, not pushState: pushState here would trap the back button in a
+// mint-then-redirect loop, since every visit to a bare /edit would push a new
+// history entry pointing right back at another freshly minted room.
+export function resolveEditorRoomId(): string {
+  const existing = readRoomIdFromLocation();
+  if (existing !== null) return existing;
+
+  const id = generateRoomId();
+  const url = new URL(window.location.href);
+  url.hash = `room=${id}`;
+  window.history.replaceState(null, "", url);
+  return id;
+}

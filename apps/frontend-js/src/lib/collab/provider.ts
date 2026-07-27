@@ -93,9 +93,19 @@ export class SyncProvider {
     this.doc.on("update", this.updateHandler);
 
     // A change with origin === this arrived from the relay, which already fanned
-    // it out to every other member; re-broadcasting it would only echo.
+    // it out to every other member; re-broadcasting it would only echo. The
+    // exception is a newcomer (in `added`): they joined after our own handshake
+    // announce had anyone to reach, so we owe them one reply of our own state.
+    // Once they have it, our next update carries no new `added` entries, so this
+    // terminates in a single reply per side rather than echoing forever.
     this.awarenessUpdateHandler = (changes, origin) => {
-      if (origin === this) return;
+      if (origin === this) {
+        if (changes.added.length > 0) {
+          this.pendingAwarenessClients.add(this.doc.clientID);
+          this.scheduleAwarenessFlush();
+        }
+        return;
+      }
       for (const clientId of changes.added.concat(changes.updated, changes.removed)) {
         this.pendingAwarenessClients.add(clientId);
       }

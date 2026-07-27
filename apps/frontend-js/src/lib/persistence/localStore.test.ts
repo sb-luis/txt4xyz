@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createDebouncedDocWriter, readStoredDoc } from "./localStore";
+import {
+  createDebouncedDocWriter,
+  readStoredDoc,
+  readStoredRoomDoc,
+  roomStorageKey,
+  writeStoredRoomDoc,
+} from "./localStore";
 
 const STORAGE_KEY = "txt4xyz:doc";
 
@@ -70,5 +76,48 @@ describe("createDebouncedDocWriter", () => {
     writer.cancel();
     vi.advanceTimersByTime(1000);
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe("writeStoredRoomDoc / readStoredRoomDoc", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("round-trips a document under its room-scoped key", () => {
+    writeStoredRoomDoc("room-a", "print('a')");
+    expect(readStoredRoomDoc("room-a")).toBe("print('a')");
+    expect(readStoredDoc(roomStorageKey("room-a"))).toBe("print('a')");
+  });
+
+  it("keeps two rooms' documents from colliding", () => {
+    writeStoredRoomDoc("room-a", "print('a')");
+    writeStoredRoomDoc("room-b", "print('b')");
+
+    expect(readStoredRoomDoc("room-a")).toBe("print('a')");
+    expect(readStoredRoomDoc("room-b")).toBe("print('b')");
+  });
+
+  it("prunes the oldest room once the bound is exceeded, so storage cannot grow without limit", () => {
+    for (let i = 0; i < 21; i++) {
+      writeStoredRoomDoc(`room-${i}`, `print(${i})`);
+    }
+
+    // room-0 is the least-recently-touched of 21 rooms against a bound of 20.
+    expect(readStoredRoomDoc("room-0")).toBeNull();
+    expect(readStoredRoomDoc("room-20")).toBe("print(20)");
+  });
+
+  it("keeps a room's slot fresh (not evicted) when it is written again", () => {
+    writeStoredRoomDoc("room-old", "print('old')");
+    for (let i = 0; i < 19; i++) {
+      writeStoredRoomDoc(`room-${i}`, `print(${i})`);
+    }
+    // Touch room-old again so it is no longer the least-recently-used entry.
+    writeStoredRoomDoc("room-old", "print('old, edited')");
+    writeStoredRoomDoc("room-new", "print('new')");
+
+    expect(readStoredRoomDoc("room-old")).toBe("print('old, edited')");
+    expect(readStoredRoomDoc("room-0")).toBeNull();
   });
 });

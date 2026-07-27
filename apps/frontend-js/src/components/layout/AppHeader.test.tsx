@@ -2,19 +2,23 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AppHeader } from "./AppHeader";
 
+const DISCONNECTED_ROOM = { status: "disconnected" as const, participants: [] };
+
 describe("AppHeader", () => {
   it("disables Run unless the runtime is ready", () => {
     const onRun = vi.fn();
-    const { rerender } = render(<AppHeader status="loading" onRun={onRun} onStop={vi.fn()} getCode={() => ""} />);
+    const { rerender } = render(
+      <AppHeader status="loading" onRun={onRun} onStop={vi.fn()} room={DISCONNECTED_ROOM} />,
+    );
     expect((screen.getByRole("button", { name: "Run" }) as HTMLButtonElement).disabled).toBe(true);
 
-    rerender(<AppHeader status="running" onRun={onRun} onStop={vi.fn()} getCode={() => ""} />);
+    rerender(<AppHeader status="running" onRun={onRun} onStop={vi.fn()} room={DISCONNECTED_ROOM} />);
     expect((screen.getByRole("button", { name: "Run" }) as HTMLButtonElement).disabled).toBe(true);
 
-    rerender(<AppHeader status="error" onRun={onRun} onStop={vi.fn()} getCode={() => ""} />);
+    rerender(<AppHeader status="error" onRun={onRun} onStop={vi.fn()} room={DISCONNECTED_ROOM} />);
     expect((screen.getByRole("button", { name: "Run" }) as HTMLButtonElement).disabled).toBe(true);
 
-    rerender(<AppHeader status="ready" onRun={onRun} onStop={vi.fn()} getCode={() => ""} />);
+    rerender(<AppHeader status="ready" onRun={onRun} onStop={vi.fn()} room={DISCONNECTED_ROOM} />);
     const runButton = screen.getByRole("button", { name: "Run" }) as HTMLButtonElement;
     expect(runButton.disabled).toBe(false);
 
@@ -24,13 +28,15 @@ describe("AppHeader", () => {
 
   it("enables Stop only while running", () => {
     const onStop = vi.fn();
-    const { rerender } = render(<AppHeader status="ready" onRun={vi.fn()} onStop={onStop} getCode={() => ""} />);
+    const { rerender } = render(
+      <AppHeader status="ready" onRun={vi.fn()} onStop={onStop} room={DISCONNECTED_ROOM} />,
+    );
     expect((screen.getByRole("button", { name: "Stop" }) as HTMLButtonElement).disabled).toBe(true);
 
-    rerender(<AppHeader status="loading" onRun={vi.fn()} onStop={onStop} getCode={() => ""} />);
+    rerender(<AppHeader status="loading" onRun={vi.fn()} onStop={onStop} room={DISCONNECTED_ROOM} />);
     expect((screen.getByRole("button", { name: "Stop" }) as HTMLButtonElement).disabled).toBe(true);
 
-    rerender(<AppHeader status="running" onRun={vi.fn()} onStop={onStop} getCode={() => ""} />);
+    rerender(<AppHeader status="running" onRun={vi.fn()} onStop={onStop} room={DISCONNECTED_ROOM} />);
     const stopButton = screen.getByRole("button", { name: "Stop" }) as HTMLButtonElement;
     expect(stopButton.disabled).toBe(false);
 
@@ -38,38 +44,43 @@ describe("AppHeader", () => {
     expect(onStop).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a status label reflecting runtime state", () => {
-    const { rerender } = render(<AppHeader status="loading" onRun={vi.fn()} onStop={vi.fn()} getCode={() => ""} />);
-    expect(screen.getByRole("status").textContent).toMatch(/loading/i);
+  it("shows a runtime status label reflecting runtime state", () => {
+    const { rerender } = render(
+      <AppHeader status="loading" onRun={vi.fn()} onStop={vi.fn()} room={DISCONNECTED_ROOM} />,
+    );
+    expect(screen.getByRole("status", { name: "runtime status" }).textContent).toMatch(/loading/i);
 
-    rerender(<AppHeader status="error" onRun={vi.fn()} onStop={vi.fn()} getCode={() => ""} />);
-    expect(screen.getByRole("status").textContent).toMatch(/error/i);
+    rerender(<AppHeader status="error" onRun={vi.fn()} onStop={vi.fn()} room={DISCONNECTED_ROOM} />);
+    expect(screen.getByRole("status", { name: "runtime status" }).textContent).toMatch(/error/i);
   });
 
-  it("copies a share link and shows confirmation", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("navigator", { clipboard: { writeText } });
+  it("shows a room status label reflecting the connection state", () => {
+    const { rerender } = render(
+      <AppHeader status="ready" onRun={vi.fn()} onStop={vi.fn()} room={{ status: "connecting", participants: [] }} />,
+    );
+    expect(screen.getByRole("status", { name: "room status" }).textContent).toMatch(/connecting/i);
 
-    render(<AppHeader status="ready" onRun={vi.fn()} onStop={vi.fn()} getCode={() => "print(1)"} />);
-    const shareButton = screen.getByRole("button", { name: "Share" });
-
-    fireEvent.click(shareButton);
-    await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    await screen.findByRole("button", { name: "Copied!" });
-
-    vi.unstubAllGlobals();
+    rerender(
+      <AppHeader status="ready" onRun={vi.fn()} onStop={vi.fn()} room={{ status: "connected", participants: [] }} />,
+    );
+    expect(screen.getByRole("status", { name: "room status" }).textContent).toMatch(/^connected$/i);
   });
 
-  it("shows failure feedback when the clipboard write rejects", async () => {
-    vi.stubGlobal("navigator", {
-      clipboard: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
-    });
+  it("lists participants only once someone besides the local user is present", () => {
+    const { rerender } = render(
+      <AppHeader status="ready" onRun={vi.fn()} onStop={vi.fn()} room={DISCONNECTED_ROOM} />,
+    );
+    expect(screen.queryByRole("list", { name: "participants" })).toBeNull();
 
-    render(<AppHeader status="ready" onRun={vi.fn()} onStop={vi.fn()} getCode={() => "print(1)"} />);
-    fireEvent.click(screen.getByRole("button", { name: "Share" }));
-
-    await screen.findByRole("button", { name: "Copy failed" });
-
-    vi.unstubAllGlobals();
+    rerender(
+      <AppHeader
+        status="ready"
+        onRun={vi.fn()}
+        onStop={vi.fn()}
+        room={{ status: "connected", participants: [{ clientId: 1, name: "ava", color: "oklch(0.8 0.1 200)" }] }}
+      />,
+    );
+    expect(screen.getByRole("list", { name: "participants" })).toBeTruthy();
+    expect(screen.getByTitle("ava")).toBeTruthy();
   });
 });

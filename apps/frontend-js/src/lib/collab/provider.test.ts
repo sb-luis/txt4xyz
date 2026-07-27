@@ -524,6 +524,113 @@ describe("awareness coalescing", () => {
   });
 });
 
+describe("awareness announce-to-newcomer", () => {
+  // A relay that forwards every frame after the room-id handshake frame to
+  // every other member currently in the room, the same fan-out a real room
+  // provides.
+  class RelaySocket extends FakeSocket {
+    label = "?";
+    private firstFrameSwallowed = false;
+    private relay: RelayBus | null = null;
+
+    join(relay: RelayBus) {
+      this.relay = relay;
+      relay.members.push(this);
+    }
+
+    send(data: Uint8Array) {
+      super.send(data);
+      if (!this.firstFrameSwallowed) {
+        this.firstFrameSwallowed = true;
+        return;
+      }
+      for (const member of this.relay?.members ?? []) {
+        if (member !== this) member.receive(data);
+      }
+    }
+  }
+
+  class RelayBus {
+    members: RelaySocket[] = [];
+  }
+
+  const MESSAGE_AWARENESS_TYPE = 1;
+
+  function countAwarenessFrames(socket: RelaySocket): number {
+    return socket.sent.filter((frame) => {
+      const decoder = decoding.createDecoder(frame);
+      return decoding.readVarUint(decoder) === MESSAGE_AWARENESS_TYPE;
+    }).length;
+  }
+
+  it("makes an already-connected peer announce itself to a newcomer, and terminates instead of echoing forever", async () => {
+    const relay = new RelayBus();
+
+    const { doc: docA, awareness: awarenessA } = newDocAndAwareness();
+    awarenessA.setLocalStateField("user", { name: "ava", color: "oklch(0.8 0.1 200)" });
+    let socketA!: RelaySocket;
+    const providerA = new SyncProvider({
+      doc: docA,
+      awareness: awarenessA,
+      url: "wss://example.invalid/relay",
+      roomId: "room",
+      createWebSocket: () => {
+        socketA = new RelaySocket();
+        socketA.label = "A";
+        socketA.join(relay);
+        return socketA;
+      },
+    });
+    socketA.open();
+    await flushMicrotasks();
+
+    // A is alone in the room at this point: its handshake announce had no one
+    // to reach, mirroring the pre-fix bug where a joiner's participant list
+    // showed only themselves until an existing peer moved a cursor.
+    expect(awarenessA.getStates().has(docA.clientID)).toBe(true);
+
+    const { doc: docB, awareness: awarenessB } = newDocAndAwareness();
+    awarenessB.setLocalStateField("user", { name: "bo", color: "oklch(0.8 0.1 30)" });
+    let socketB!: RelaySocket;
+    const providerB = new SyncProvider({
+      doc: docB,
+      awareness: awarenessB,
+      url: "wss://example.invalid/relay",
+      roomId: "room",
+      createWebSocket: () => {
+        socketB = new RelaySocket();
+        socketB.label = "B";
+        socketB.join(relay);
+        return socketB;
+      },
+    });
+    socketB.open();
+    await flushMicrotasks();
+
+    // Two coalesce rounds: B's handshake reaches A, A replies, B replies once
+    // more to that reply, then A already knows B and stays silent.
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    expect(awarenessA.getStates().has(docB.clientID)).toBe(true);
+    expect(awarenessB.getStates().has(docA.clientID)).toBe(true);
+
+    const framesAfterConvergence = {
+      a: countAwarenessFrames(socketA),
+      b: countAwarenessFrames(socketB),
+    };
+
+    // Give any runaway echo a further window to manifest.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(countAwarenessFrames(socketA)).toBe(framesAfterConvergence.a);
+    expect(countAwarenessFrames(socketB)).toBe(framesAfterConvergence.b);
+
+    providerA.destroy();
+    providerB.destroy();
+  });
+});
+
 describe("no ghost cursors", () => {
   it("removes the local awareness state and broadcasts the removal when destroyed", async () => {
     const { doc, awareness } = newDocAndAwareness();
