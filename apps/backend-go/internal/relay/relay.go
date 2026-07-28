@@ -16,6 +16,11 @@ import (
 )
 
 const (
+	// defaultMaxMessageSize is not derived from any character limit. A
+	// full-document Yjs sync frame carries the whole document in one frame,
+	// so its size tracks edit history rather than document length; measured
+	// worst case was ~1.4 MiB. Exceeding it closes the sender for an oversize
+	// frame, which reconnects and resends the same frame, looping forever.
 	defaultMaxMessageSize = 2 * 1024 * 1024
 	defaultRateLimit      = 40.0
 	defaultRateBurst      = 80
@@ -29,11 +34,31 @@ const (
 	writeTimeout   = 10 * time.Second
 )
 
+// These are RFC 6455 section 7.4.2 private-use close codes. The browser
+// client (apps/frontend-js/src/lib/collab/provider.ts) treats the entire
+// 4000-4999 range as terminal and will not reconnect.
+const (
+	closeRoomFull      = websocket.StatusCode(4001)
+	closeAtCapacity    = websocket.StatusCode(4002)
+	closeInvalidRoomID = websocket.StatusCode(4003)
+)
+
 var (
 	errClosed     = errors.New("relay: shutting down")
 	errRoomFull   = errors.New("relay: room full")
 	errAtCapacity = errors.New("relay: server at capacity")
 )
+
+// rejection carries the close code and reason a rejected enter should use,
+// while still wrapping the original sentinel so errors.Is keeps working.
+type rejection struct {
+	err    error
+	code   websocket.StatusCode
+	reason string
+}
+
+func (r *rejection) Error() string { return r.err.Error() }
+func (r *rejection) Unwrap() error { return r.err }
 
 // Option configures a Relay built by New.
 type Option func(*Relay)
@@ -107,7 +132,11 @@ func (r *Relay) Join(ctx context.Context, conn *websocket.Conn) error {
 	roomID, err := readRoomID(roomCtx, conn)
 	cancel()
 	if err != nil {
-		conn.Close(websocket.StatusCode(4003), "invalid room id")
+		if errors.Is(err, errRoomIDFrameType) || errors.Is(err, errRoomIDInvalid) {
+			conn.Close(closeInvalidRoomID, "invalid room id")
+		} else {
+			conn.Close(websocket.StatusGoingAway, "handshake failed")
+		}
 		return err
 	}
 
@@ -115,12 +144,10 @@ func (r *Relay) Join(ctx context.Context, conn *websocket.Conn) error {
 
 	rm, leave, err := r.enter(roomID, m)
 	if err != nil {
-		switch {
-		case errors.Is(err, errRoomFull):
-			conn.Close(websocket.StatusCode(4001), "room full")
-		case errors.Is(err, errAtCapacity):
-			conn.Close(websocket.StatusCode(4002), "server at capacity")
-		default:
+		var rej *rejection
+		if errors.As(err, &rej) {
+			conn.Close(rej.code, rej.reason)
+		} else {
 			conn.Close(websocket.StatusGoingAway, "server shutting down")
 		}
 		return err
@@ -192,7 +219,7 @@ func (r *Relay) enter(roomID string, m *member) (*room, func(), error) {
 	r.mu.Lock()
 	if r.closed {
 		r.mu.Unlock()
-		return nil, nil, errClosed
+		return nil, nil, &rejection{errClosed, websocket.StatusGoingAway, "server shutting down"}
 	}
 
 	rm, ok := r.rooms[roomID]
@@ -200,7 +227,7 @@ func (r *Relay) enter(roomID string, m *member) (*room, func(), error) {
 	if !ok {
 		if len(r.rooms) >= r.maxRooms {
 			r.mu.Unlock()
-			return nil, nil, errAtCapacity
+			return nil, nil, &rejection{errAtCapacity, closeAtCapacity, "server at capacity"}
 		}
 		rm = &room{members: make(map[*member]struct{})}
 		r.rooms[roomID] = rm
@@ -213,7 +240,7 @@ func (r *Relay) enter(roomID string, m *member) (*room, func(), error) {
 			delete(r.rooms, roomID)
 		}
 		r.mu.Unlock()
-		return nil, nil, errRoomFull
+		return nil, nil, &rejection{errRoomFull, closeRoomFull, "room full"}
 	}
 	rm.members[m] = struct{}{}
 	rm.mu.Unlock()

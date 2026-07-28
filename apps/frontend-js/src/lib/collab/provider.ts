@@ -11,10 +11,18 @@ export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "re
 const READY_STATE_OPEN = 1;
 const STABLE_CONNECTION_MS = 5_000;
 
-// The Go relay's private application range: a room the client can never enter,
-// so reconnecting would loop forever instead of surfacing the rejection.
+// RFC 6455 section 7.4.2's private-use close code range: no future registered
+// code can collide with it, so any code in this range from the relay is terminal
+// and reconnecting would loop forever instead of surfacing the rejection.
 const TERMINAL_CLOSE_CODE_MIN = 4000;
 const TERMINAL_CLOSE_CODE_MAX = 4999;
+
+// Named codes the relay actually sends; counterpart in
+// apps/backend-go/internal/relay/relay.go. The range check above stays the
+// terminal test so an unnamed future 4xxx is still terminal.
+export const CLOSE_ROOM_FULL = 4001;
+export const CLOSE_AT_CAPACITY = 4002;
+export const CLOSE_INVALID_ROOM_ID = 4003;
 
 // y-websocket's convention: a leading varUint lets awareness share the socket
 // with sync, and leaves room for Phase 3's run broadcast.
@@ -190,6 +198,7 @@ export class SyncProvider {
   private connect(): void {
     if (this.destroyed) return;
     this.setStatus("connecting");
+    this.currentRejectedCode = null;
 
     this.sendChain = Promise.resolve();
     const socket = this.createWebSocket(this.url);

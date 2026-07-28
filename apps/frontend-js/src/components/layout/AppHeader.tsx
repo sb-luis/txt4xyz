@@ -1,5 +1,10 @@
 import type { RunnerStatus } from "@/lib/python/runner";
-import type { ConnectionStatus } from "@/lib/collab/provider";
+import {
+  CLOSE_ROOM_FULL,
+  CLOSE_AT_CAPACITY,
+  CLOSE_INVALID_ROOM_ID,
+  type ConnectionStatus,
+} from "@/lib/collab/provider";
 import type { Participant } from "@/lib/collab/useRoom";
 
 const STATUS_LABEL: Record<RunnerStatus, string> = {
@@ -16,11 +21,24 @@ const ROOM_STATUS_LABEL: Record<ConnectionStatus, string> = {
   rejected: "room unavailable",
 };
 
+const REJECTED_CODE_LABEL: Record<number, string> = {
+  [CLOSE_ROOM_FULL]: "room is full",
+  [CLOSE_AT_CAPACITY]: "server at capacity",
+  [CLOSE_INVALID_ROOM_ID]: "invalid room link",
+};
+
+function roomStatusLabel(status: ConnectionStatus, rejectedCode: number | null): string {
+  if (status === "rejected" && rejectedCode !== null) {
+    return REJECTED_CODE_LABEL[rejectedCode] ?? ROOM_STATUS_LABEL.rejected;
+  }
+  return ROOM_STATUS_LABEL[status];
+}
+
 export interface AppHeaderProps {
   status: RunnerStatus;
   onRun: () => void;
   onStop: () => void;
-  room: { status: ConnectionStatus; participants: Participant[] };
+  room: { status: ConnectionStatus; rejectedCode: number | null; participants: Participant[] };
 }
 
 export function AppHeader({ status, onRun, onStop, room }: AppHeaderProps) {
@@ -43,7 +61,7 @@ export function AppHeader({ status, onRun, onStop, room }: AppHeaderProps) {
           {STATUS_LABEL[status]}
         </span>
         <span role="status" aria-label="room status" className="font-mono text-xs text-app-muted">
-          {ROOM_STATUS_LABEL[room.status]}
+          {roomStatusLabel(room.status, room.rejectedCode)}
         </span>
         {room.participants.length > 0 && (
           <ul aria-label="participants" className="flex items-center gap-1.5">

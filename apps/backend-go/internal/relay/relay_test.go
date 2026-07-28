@@ -304,3 +304,22 @@ func TestInvalidRoomIDClosesConnection(t *testing.T) {
 		t.Fatal("expected connection to be closed after an invalid room id")
 	}
 }
+
+func TestTextFirstFrameClosesWithInvalidRoomID(t *testing.T) {
+	srv, _ := newTestServer(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn := dialRaw(t, srv)
+	if err := conn.Write(ctx, websocket.MessageText, []byte("not binary")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	_, _, err := conn.Read(ctx)
+	if err == nil {
+		t.Fatal("expected connection to be closed after a text first frame")
+	}
+	if code := websocket.CloseStatus(err); code != 4003 {
+		t.Fatalf("got close code %d, want 4003", code)
+	}
+}

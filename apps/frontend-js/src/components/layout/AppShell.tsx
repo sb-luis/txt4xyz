@@ -11,7 +11,7 @@ export function AppShell() {
   const { status, output, run, stop, clearOutput } = usePythonRunner();
   const [roomId, setRoomId] = useState(() => resolveEditorRoomId());
   const codeRef = useRef("");
-  const { ytext, awareness, status: roomStatus, participants } = useRoom(roomId);
+  const { ytext, awareness, status: roomStatus, rejectedCode, participants } = useRoom(roomId);
 
   // Without this, a fragment change (back/forward, or pasting a room link into
   // an open tab) never reloads the page, so the app keeps relaying into the
@@ -36,7 +36,7 @@ export function AppShell() {
         status={status}
         onRun={handleRun}
         onStop={stop}
-        room={{ status: roomStatus, participants }}
+        room={{ status: roomStatus, rejectedCode, participants }}
       />
       <main className="flex min-h-0 flex-1 flex-col gap-px overflow-hidden bg-app-border md:flex-row">
         <Pane title="editor">
