@@ -1,3 +1,4 @@
 /reference
 /plan
 .DS_STORE
+node_modules/

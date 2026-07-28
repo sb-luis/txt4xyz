@@ -32,14 +32,24 @@ async function init(): Promise<PyodideInterface> {
   });
 }
 
-async function run(pyodide: PyodideInterface, id: string, code: string) {
+export async function run(pyodide: PyodideInterface, id: string, code: string) {
   currentRunId = id;
+  const ns = pyodide.runPython(
+    [
+      "import sys, types",
+      "m = types.ModuleType('__main__')",
+      "m.__dict__['__builtins__'] = __builtins__",
+      "sys.modules['__main__'] = m",
+      "m.__dict__",
+    ].join("\n"),
+  );
   try {
-    await pyodide.runPythonAsync(code);
+    await pyodide.runPythonAsync(code, { globals: ns });
     post({ type: "run-result", id });
   } catch (err) {
     post({ type: "run-error", id, traceback: String(err) });
   } finally {
+    ns.destroy();
     currentRunId = null;
   }
 }
