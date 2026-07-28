@@ -1,3 +1,5 @@
+import * as Y from "yjs";
+
 const MAX_ROOM_ID_LEN = 128;
 const ROOM_ID_PATTERN = /^[a-zA-Z0-9\-_]+$/;
 
@@ -5,6 +7,12 @@ function base64UrlEncode(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Every room doc is built here so the gc setting has one home: gc:false would
+// grow sync payloads by ~75x on delete-heavy sessions without failing anything.
+export function createRoomDoc(): Y.Doc {
+  return new Y.Doc({ gc: true });
 }
 
 export function generateRoomId(): string {

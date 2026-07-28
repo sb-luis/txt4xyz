@@ -16,9 +16,11 @@ import (
 )
 
 const (
-	defaultMaxMessageSize = 512 * 1024
+	defaultMaxMessageSize = 2 * 1024 * 1024
 	defaultRateLimit      = 40.0
 	defaultRateBurst      = 80
+	defaultMaxRoomSize    = 8
+	defaultMaxRooms       = 256
 
 	sendBufferSize = 16
 	joinTimeout    = 10 * time.Second
@@ -27,7 +29,11 @@ const (
 	writeTimeout   = 10 * time.Second
 )
 
-var errClosed = errors.New("relay: shutting down")
+var (
+	errClosed     = errors.New("relay: shutting down")
+	errRoomFull   = errors.New("relay: room full")
+	errAtCapacity = errors.New("relay: server at capacity")
+)
 
 // Option configures a Relay built by New.
 type Option func(*Relay)
@@ -45,6 +51,18 @@ func WithRateLimit(eventsPerSecond float64, burst int) Option {
 	return func(r *Relay) { r.rateLimit = eventsPerSecond; r.rateBurst = burst }
 }
 
+// WithMaxRoomSize caps the number of members a single room may hold. A join
+// that would exceed it is rejected instead of admitted.
+func WithMaxRoomSize(n int) Option {
+	return func(r *Relay) { r.maxRoomSize = n }
+}
+
+// WithMaxRooms caps the number of distinct rooms held in memory at once.
+// Joining an existing room is unaffected; only creating a new one is capped.
+func WithMaxRooms(n int) Option {
+	return func(r *Relay) { r.maxRooms = n }
+}
+
 // Relay holds every room currently in memory. The zero value is not usable;
 // construct one with New.
 type Relay struct {
@@ -57,6 +75,8 @@ type Relay struct {
 	maxMessageSize int64
 	rateLimit      float64
 	rateBurst      int
+	maxRoomSize    int
+	maxRooms       int
 }
 
 // New builds a ready-to-use Relay with no rooms.
@@ -67,6 +87,8 @@ func New(opts ...Option) *Relay {
 		maxMessageSize: defaultMaxMessageSize,
 		rateLimit:      defaultRateLimit,
 		rateBurst:      defaultRateBurst,
+		maxRoomSize:    defaultMaxRoomSize,
+		maxRooms:       defaultMaxRooms,
 	}
 	for _, opt := range opts {
 		opt(r)
@@ -85,7 +107,7 @@ func (r *Relay) Join(ctx context.Context, conn *websocket.Conn) error {
 	roomID, err := readRoomID(roomCtx, conn)
 	cancel()
 	if err != nil {
-		conn.Close(websocket.StatusPolicyViolation, "invalid room id")
+		conn.Close(websocket.StatusCode(4003), "invalid room id")
 		return err
 	}
 
@@ -93,7 +115,14 @@ func (r *Relay) Join(ctx context.Context, conn *websocket.Conn) error {
 
 	rm, leave, err := r.enter(roomID, m)
 	if err != nil {
-		conn.Close(websocket.StatusGoingAway, "server shutting down")
+		switch {
+		case errors.Is(err, errRoomFull):
+			conn.Close(websocket.StatusCode(4001), "room full")
+		case errors.Is(err, errAtCapacity):
+			conn.Close(websocket.StatusCode(4002), "server at capacity")
+		default:
+			conn.Close(websocket.StatusGoingAway, "server shutting down")
+		}
 		return err
 	}
 	defer leave()
@@ -167,11 +196,25 @@ func (r *Relay) enter(roomID string, m *member) (*room, func(), error) {
 	}
 
 	rm, ok := r.rooms[roomID]
+	created := false
 	if !ok {
+		if len(r.rooms) >= r.maxRooms {
+			r.mu.Unlock()
+			return nil, nil, errAtCapacity
+		}
 		rm = &room{members: make(map[*member]struct{})}
 		r.rooms[roomID] = rm
+		created = true
 	}
 	rm.mu.Lock()
+	if len(rm.members) >= r.maxRoomSize {
+		rm.mu.Unlock()
+		if created {
+			delete(r.rooms, roomID)
+		}
+		r.mu.Unlock()
+		return nil, nil, errRoomFull
+	}
 	rm.members[m] = struct{}{}
 	rm.mu.Unlock()
 

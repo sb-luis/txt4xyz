@@ -1,13 +1,25 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { python } from "@codemirror/lang-python";
 import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Transaction } from "@codemirror/state";
 import { EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { yCollab, yRemoteSelectionsTheme } from "y-codemirror.next";
 import { useEffect, useRef } from "react";
 import type * as Y from "yjs";
 import type * as awarenessProtocol from "y-protocols/awareness";
 import { editorHighlightStyle, editorTheme } from "./theme";
+
+// Bounds editor and Pyodide performance and localStorage usage, not the wire:
+// Yjs sync payload size tracks edit history, not document length.
+const MAX_DOC_LENGTH = 100_000;
+
+// Only user-originated transactions carry a userEvent annotation; remote y-sync
+// updates do not. Reading it wrong must never reject a remote update, so an
+// unrecognised transaction is allowed through rather than capped.
+const enforceDocLengthCap = EditorState.changeFilter.of((tr) => {
+  if (!tr.docChanged || tr.annotation(Transaction.userEvent) === undefined) return true;
+  return tr.newDoc.length <= MAX_DOC_LENGTH;
+});
 
 export interface CodeEditorProps {
   initialDoc: string;
@@ -43,6 +55,7 @@ export function CodeEditor({ initialDoc, onChange, ytext, awareness }: CodeEdito
         editorTheme,
         yRemoteSelectionsTheme,
         EditorView.lineWrapping,
+        enforceDocLengthCap,
         ...(ytext ? [yCollab(ytext, awareness ?? null)] : []),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {

@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import * as awarenessProtocol from "y-protocols/awareness";
 import { SyncProvider, type ConnectionStatus } from "./provider";
 import { generateIdentity } from "./identity";
+import { createRoomDoc } from "./room";
 import { createDebouncedRoomDocWriter, readStoredRoomDoc } from "@/lib/persistence/localStore";
 
 // Budget for a peer to answer sync step 1 and announce itself: a full relay
@@ -29,6 +30,7 @@ export interface UseRoomResult {
   ytext: Y.Text | null;
   awareness: awarenessProtocol.Awareness | null;
   status: ConnectionStatus;
+  rejectedCode: number | null;
   participants: Participant[];
 }
 
@@ -38,6 +40,7 @@ const DISCONNECTED_SNAPSHOT: UseRoomResult = {
   ytext: null,
   awareness: null,
   status: "disconnected",
+  rejectedCode: null,
   participants: EMPTY_PARTICIPANTS,
 };
 
@@ -79,7 +82,7 @@ export function useRoom(roomId: string | null): UseRoomResult {
       return;
     }
 
-    const doc = new Y.Doc();
+    const doc = createRoomDoc();
     const ytext = doc.getText("shared");
 
     // Lifetime matches the room exactly: created and torn down alongside the
@@ -91,7 +94,13 @@ export function useRoom(roomId: string | null): UseRoomResult {
     let participants = readParticipants(awareness);
 
     const provider = new SyncProvider({ doc, awareness, url: relayUrl(), roomId });
-    snapshotRef.current = { ytext, awareness, status: provider.status, participants };
+    snapshotRef.current = {
+      ytext,
+      awareness,
+      status: provider.status,
+      rejectedCode: provider.rejectedCode,
+      participants,
+    };
     notify();
 
     const writer = createDebouncedRoomDocWriter(roomId);
@@ -136,7 +145,7 @@ export function useRoom(roomId: string | null): UseRoomResult {
     awareness.on("change", onAwarenessChange);
 
     const unsubscribe = provider.onStatusChange((status) => {
-      snapshotRef.current = { ...snapshotRef.current, status };
+      snapshotRef.current = { ...snapshotRef.current, status, rejectedCode: provider.rejectedCode };
       notify();
       if (status === "connected") scheduleRestoreCheck();
     });

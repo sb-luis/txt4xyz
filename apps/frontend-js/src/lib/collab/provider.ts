@@ -6,10 +6,15 @@ import * as decoding from "lib0/decoding";
 import { identityCodec, type Codec } from "./codec";
 import { backoffDelay, defaultBackoffOptions, type BackoffOptions } from "./backoff";
 
-export type ConnectionStatus = "connecting" | "connected" | "disconnected";
+export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "rejected";
 
 const READY_STATE_OPEN = 1;
 const STABLE_CONNECTION_MS = 5_000;
+
+// The Go relay's private application range: a room the client can never enter,
+// so reconnecting would loop forever instead of surfacing the rejection.
+const TERMINAL_CLOSE_CODE_MIN = 4000;
+const TERMINAL_CLOSE_CODE_MAX = 4999;
 
 // y-websocket's convention: a leading varUint lets awareness share the socket
 // with sync, and leaves room for Phase 3's run broadcast.
@@ -22,7 +27,7 @@ export type WebSocketLike = {
   binaryType: string;
   readyState: number;
   onopen: (() => void) | null;
-  onclose: (() => void) | null;
+  onclose: ((event: { code: number }) => void) | null;
   onerror: ((error: unknown) => void) | null;
   onmessage: ((event: { data: ArrayBuffer }) => void) | null;
   send(data: Uint8Array): void;
@@ -60,6 +65,7 @@ export class SyncProvider {
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private currentStatus: ConnectionStatus = "disconnected";
+  private currentRejectedCode: number | null = null;
   private readonly statusListeners = new Set<(status: ConnectionStatus) => void>();
   private readonly updateHandler: (update: Uint8Array, origin: unknown) => void;
   private readonly awarenessUpdateHandler: (
@@ -122,6 +128,10 @@ export class SyncProvider {
 
   get status(): ConnectionStatus {
     return this.currentStatus;
+  }
+
+  get rejectedCode(): number | null {
+    return this.currentRejectedCode;
   }
 
   onStatusChange(listener: (status: ConnectionStatus) => void): () => void {
@@ -198,10 +208,18 @@ export class SyncProvider {
       void this.handleMessage(new Uint8Array(event.data));
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       if (this.socket !== socket) return;
       this.socket = null;
       if (this.destroyed) return;
+
+      if (event.code >= TERMINAL_CLOSE_CODE_MIN && event.code <= TERMINAL_CLOSE_CODE_MAX) {
+        this.connectedAt = 0;
+        this.currentRejectedCode = event.code;
+        this.setStatus("rejected");
+        return;
+      }
+
       // Only a connection that survived counts as success. A relay that accepts
       // the socket then rejects the room id would otherwise reset the backoff on
       // every attempt, turning reconnection into a hot loop.

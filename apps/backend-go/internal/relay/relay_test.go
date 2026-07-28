@@ -201,6 +201,89 @@ func TestRateLimitExceededClosesConnection(t *testing.T) {
 	}
 }
 
+func TestRoomFullRejectsExtraMember(t *testing.T) {
+	srv, rel := newTestServer(t, WithMaxRoomSize(2))
+	a := dial(t, srv, "room-a")
+	b := dial(t, srv, "room-a")
+	waitForRoomMembers(t, rel, "room-a", 2)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	extra := dialRaw(t, srv)
+	if err := extra.Write(ctx, websocket.MessageBinary, []byte("room-a")); err != nil {
+		t.Fatalf("write room id: %v", err)
+	}
+	_, _, err := extra.Read(ctx)
+	if err == nil {
+		t.Fatal("expected the third member's connection to be closed")
+	}
+	if code := websocket.CloseStatus(err); code != 4001 {
+		t.Fatalf("got close code %d, want 4001", code)
+	}
+
+	payload := []byte("still works")
+	if err := a.Write(context.Background(), websocket.MessageBinary, payload); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	_, data := readOne(t, b, 5*time.Second)
+	if string(data) != string(payload) {
+		t.Fatalf("got %v, want %v", data, payload)
+	}
+}
+
+func TestRoomCapNotStickyAfterLeave(t *testing.T) {
+	srv, rel := newTestServer(t, WithMaxRoomSize(1))
+	a := dial(t, srv, "room-a")
+	waitForRoomMembers(t, rel, "room-a", 1)
+
+	a.Close(websocket.StatusNormalClosure, "")
+	waitForRoomMembers(t, rel, "room-a", 0)
+	waitForRoomCount(t, rel, 0)
+
+	b := dial(t, srv, "room-a")
+	waitForRoomMembers(t, rel, "room-a", 1)
+	_ = b
+}
+
+func TestMaxRoomsRejectsNewRoomButNotExistingJoin(t *testing.T) {
+	srv, rel := newTestServer(t, WithMaxRooms(1), WithMaxRoomSize(5))
+	a := dial(t, srv, "room-a")
+	waitForRoomMembers(t, rel, "room-a", 1)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	extra := dialRaw(t, srv)
+	if err := extra.Write(ctx, websocket.MessageBinary, []byte("room-b")); err != nil {
+		t.Fatalf("write room id: %v", err)
+	}
+	_, _, err := extra.Read(ctx)
+	if err == nil {
+		t.Fatal("expected new-room join to be rejected")
+	}
+	if code := websocket.CloseStatus(err); code != 4002 {
+		t.Fatalf("got close code %d, want 4002", code)
+	}
+
+	b := dial(t, srv, "room-a")
+	waitForRoomMembers(t, rel, "room-a", 2)
+	_ = a
+	_ = b
+}
+
+func dialRaw(t *testing.T, srv *httptest.Server) *websocket.Conn {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	url := "ws" + srv.URL[len("http"):]
+	conn, _, err := websocket.Dial(ctx, url, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	t.Cleanup(func() { conn.Close(websocket.StatusNormalClosure, "") })
+	return conn
+}
+
 func TestInvalidRoomIDClosesConnection(t *testing.T) {
 	srv, _ := newTestServer(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

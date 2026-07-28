@@ -21,7 +21,7 @@ class FakeSocket implements WebSocketLike {
   binaryType = "";
   readyState = 0;
   onopen: (() => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
   onerror: ((error: unknown) => void) | null = null;
   onmessage: ((event: { data: ArrayBuffer }) => void) | null = null;
   sent: Uint8Array[] = [];
@@ -36,10 +36,10 @@ class FakeSocket implements WebSocketLike {
     this.sent.push(data.slice());
   }
 
-  close() {
+  close(code = 1000) {
     this.closeCalls += 1;
     this.readyState = 3;
-    this.onclose?.();
+    this.onclose?.({ code });
   }
 
   receive(bytes: Uint8Array) {
@@ -304,6 +304,81 @@ describe("reconnect backoff", () => {
 
     vi.advanceTimersByTime(secondDelay + 1);
     expect(sockets.length).toBe(3);
+
+    provider.destroy();
+    vi.useRealTimers();
+  });
+});
+
+describe("terminal close codes", () => {
+  it("stops reconnecting and exposes the code when the relay closes with a 4xxx application code", async () => {
+    const sockets: FakeSocket[] = [];
+    const provider = new SyncProvider({
+      ...newDocAndAwareness(),
+      url: "wss://example.invalid/relay",
+      roomId: "full-room",
+      createWebSocket: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+    });
+
+    sockets[0].open();
+    sockets[0].close(4001);
+    await flushMicrotasks();
+
+    expect(provider.status).toBe("rejected");
+    expect(provider.rejectedCode).toBe(4001);
+    expect(sockets.length).toBe(1);
+
+    provider.destroy();
+  });
+
+  it("treats an unrecognised 4xxx code from a newer relay as terminal too, by range rather than by list", async () => {
+    const sockets: FakeSocket[] = [];
+    const provider = new SyncProvider({
+      ...newDocAndAwareness(),
+      url: "wss://example.invalid/relay",
+      roomId: "future-room",
+      createWebSocket: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+    });
+
+    sockets[0].open();
+    sockets[0].close(4999);
+    await flushMicrotasks();
+
+    expect(provider.status).toBe("rejected");
+    expect(sockets.length).toBe(1);
+
+    provider.destroy();
+  });
+
+  it("keeps reconnecting on non-application close codes such as message-too-big or going-away", async () => {
+    vi.useFakeTimers();
+    const sockets: FakeSocket[] = [];
+    const provider = new SyncProvider({
+      ...newDocAndAwareness(),
+      url: "wss://example.invalid/relay",
+      roomId: "room",
+      random: () => 0.5,
+      createWebSocket: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+    });
+
+    sockets[0].open();
+    sockets[0].close(1009);
+    expect(provider.status).toBe("disconnected");
+
+    await vi.advanceTimersByTimeAsync(backoffDelay(0, () => 0.5) + 1);
+    expect(sockets.length).toBe(2);
 
     provider.destroy();
     vi.useRealTimers();

@@ -13,6 +13,7 @@ const ROOM_STATUS_LABEL: Record<ConnectionStatus, string> = {
   connecting: "connecting…",
   connected: "connected",
   disconnected: "disconnected",
+  rejected: "room unavailable",
 };
 
 export interface AppHeaderProps {

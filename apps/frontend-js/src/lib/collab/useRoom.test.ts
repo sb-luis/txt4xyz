@@ -9,7 +9,7 @@ class StubSocket {
   binaryType = "";
   readyState = 0;
   onopen: (() => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
   onerror: (() => void) | null = null;
   onmessage: (() => void) | null = null;
   send() {}
@@ -20,13 +20,13 @@ class AutoOpenSocket {
   binaryType = "";
   readyState = 1;
   onopen: (() => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
   onerror: (() => void) | null = null;
   onmessage: ((event: { data: ArrayBuffer }) => void) | null = null;
   send() {}
   close() {
     this.readyState = 3;
-    this.onclose?.();
+    this.onclose?.({ code: 1000 });
   }
   constructor() {
     queueMicrotask(() => this.onopen?.());
