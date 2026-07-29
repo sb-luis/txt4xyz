@@ -2,8 +2,10 @@ package relay
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -322,4 +324,25 @@ func TestTextFirstFrameClosesWithInvalidRoomID(t *testing.T) {
 	if code := websocket.CloseStatus(err); code != 4003 {
 		t.Fatalf("got close code %d, want 4003", code)
 	}
+}
+
+// Rooms are the only unbounded allocation the relay makes, so a leak here is a
+// slow memory leak plus a creeping march toward maxRooms. Concurrent leaves
+// across several rooms is the case a single-room test cannot reach.
+func TestConcurrentChurnLeavesNoRooms(t *testing.T) {
+	srv, rel := newTestServer(t)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 40; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			id := fmt.Sprintf("room-%d", i%4)
+			conn := dial(t, srv, id)
+			conn.Close(websocket.StatusNormalClosure, "")
+		}(i)
+	}
+	wg.Wait()
+
+	waitForRoomCount(t, rel, 0)
 }

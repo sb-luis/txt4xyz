@@ -250,13 +250,18 @@ func (r *Relay) enter(roomID string, m *member) (*room, func(), error) {
 	r.mu.Unlock()
 
 	leave := func() {
+		// r.mu before rm.mu, matching enter above. Releasing r.mu between
+		// emptying the room and deleting it would let a joiner land in a room
+		// that is about to leave the registry, silently splitting them off from
+		// everyone who joins that same room ID afterwards.
+		r.mu.Lock()
+		delete(r.members, m)
+
 		rm.mu.Lock()
 		delete(rm.members, m)
 		empty := len(rm.members) == 0
 		rm.mu.Unlock()
 
-		r.mu.Lock()
-		delete(r.members, m)
 		if empty && r.rooms[roomID] == rm {
 			delete(r.rooms, roomID)
 		}
