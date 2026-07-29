@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  createDebouncedDocWriter,
+  createDebouncedRoomDocWriter,
   readStoredDoc,
   readStoredRoomDoc,
   roomStorageKey,
@@ -33,7 +33,10 @@ describe("readStoredDoc", () => {
   });
 });
 
-describe("createDebouncedDocWriter", () => {
+describe("createDebouncedRoomDocWriter", () => {
+  const ROOM_ID = "room-a";
+  const ROOM_KEY = roomStorageKey(ROOM_ID);
+
   beforeEach(() => {
     vi.useFakeTimers();
     window.localStorage.clear();
@@ -45,7 +48,7 @@ describe("createDebouncedDocWriter", () => {
   });
 
   it("coalesces rapid schedule calls into a single write", () => {
-    const writer = createDebouncedDocWriter(STORAGE_KEY, 500);
+    const writer = createDebouncedRoomDocWriter(ROOM_ID, 500);
 
     writer.schedule("a");
     vi.advanceTimersByTime(100);
@@ -53,29 +56,29 @@ describe("createDebouncedDocWriter", () => {
     vi.advanceTimersByTime(100);
     writer.schedule("abc");
 
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(window.localStorage.getItem(ROOM_KEY)).toBeNull();
 
     vi.advanceTimersByTime(500);
 
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBe("abc");
+    expect(window.localStorage.getItem(ROOM_KEY)).toBe("abc");
   });
 
   it("does not throw when the underlying write fails", () => {
     vi.spyOn(window.localStorage.__proto__, "setItem").mockImplementation(() => {
       throw new Error("QuotaExceededError");
     });
-    const writer = createDebouncedDocWriter(STORAGE_KEY, 500);
+    const writer = createDebouncedRoomDocWriter(ROOM_ID, 500);
 
     writer.schedule("x");
     expect(() => vi.advanceTimersByTime(500)).not.toThrow();
   });
 
   it("cancel prevents a pending write", () => {
-    const writer = createDebouncedDocWriter(STORAGE_KEY, 500);
+    const writer = createDebouncedRoomDocWriter(ROOM_ID, 500);
     writer.schedule("should-not-persist");
     writer.cancel();
     vi.advanceTimersByTime(1000);
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(window.localStorage.getItem(ROOM_KEY)).toBeNull();
   });
 });
 

@@ -23,30 +23,6 @@ function writeStoredDoc(key: string, doc: string): void {
   }
 }
 
-export function createDebouncedDocWriter(
-  key: string,
-  delayMs = DEBOUNCE_MS,
-): {
-  schedule: (doc: string) => void;
-  cancel: () => void;
-} {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-
-  return {
-    schedule(doc: string) {
-      if (timer !== null) clearTimeout(timer);
-      timer = setTimeout(() => {
-        timer = null;
-        writeStoredDoc(key, doc);
-      }, delayMs);
-    },
-    cancel() {
-      if (timer !== null) clearTimeout(timer);
-      timer = null;
-    },
-  };
-}
-
 const ROOM_KEY_PREFIX = "txt4xyz:room:";
 const ROOM_INDEX_KEY = "txt4xyz:room-index";
 const MAX_STORED_ROOMS = 20;
