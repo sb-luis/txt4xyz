@@ -12,16 +12,9 @@ that apply to every session.
 
 ```
 apps/frontend-js    Vite + React + TypeScript + Tailwind
-apps/backend-go     Go websocket relay (added in Phase 2)
+apps/backend-go     Go websocket relay
 plan/               Build plan, split by domain — see plan/00-start-here.md
-reference/          a sibling project — READ-ONLY, gitignored
 ```
-
-`reference/` is a deployed Go + TypeScript app by the same author, checked out for reference. Its
-root maps to that repo's root. It is the house-style guide and contains a working websocket hub
-worth learning from — see `reference/AGENTS.md` and `reference/notes/architecture.md`.
-
-**Never modify anything under `reference/`.** Read from it; copy into this repo deliberately.
 
 ## Verification
 
@@ -68,8 +61,6 @@ Go stdlib, `coder/websocket`, and `golang.org/x/*` move slowly enough that this 
 
 ## Conventions
 
-Carried over from `reference/` — parity is deliberate, since one person maintains both.
-
 ### TypeScript / React
 
 - Strict TS. Path alias `@/*` → `src/*`.
@@ -84,9 +75,10 @@ Carried over from `reference/` — parity is deliberate, since one person mainta
 
 - stdlib `net/http.ServeMux` with method patterns (`"GET /ws"`). No third-party router.
 - Package-level doc comment stating the package's purpose and boundary.
-- Typed domain errors in `errorsx`; handlers map error type → HTTP status.
-- Services depend on a **narrow local interface**, not a concrete struct, so they can be mocked.
-- Constructors are `New(...)` returning `*Service`.
+- Typed sentinel errors at the package level, wrapped so `errors.Is` and `errors.As` keep working
+  across a boundary.
+- Depend on a **narrow local interface**, not a concrete struct, so it can be mocked.
+- Constructors are `New(...)` taking functional `Option`s.
 - Colocated `_test.go` files.
 - Comments explain **why**, not what.
 
@@ -105,7 +97,7 @@ Delete comments that no longer earn their place when you touch surrounding code.
 ### Websocket relay — non-negotiable
 
 The server relays **opaque binary blobs** and has no CRDT logic. Three rules, each a silent
-correctness bug if broken (full detail in `plan/05-reference-repo.md`):
+correctness bug if broken:
 
 1. Use `websocket.MessageBinary`, never `MessageText`.
 2. **Never silently drop a message.** A full send buffer or a rate-limit violation closes the
@@ -133,10 +125,9 @@ This is revisitable later (the portfolio README in `plan/07-portfolio.md` is a d
 approved exception when Phase 4 arrives), but it is not a default.
 
 If you genuinely need to record something for a future session, write it under **`plan/notes/`**.
-`plan/` and `reference/` are gitignored, so notes there stay out of the committed tree.
+`plan/` is gitignored, so notes there stay out of the committed tree.
 
 ## Workspace boundary
 
 **Read and write only inside this repository.** Do not read from or write to paths outside the
-project root — no home directory, no system temp, no sibling checkouts. `reference/` is inside
-the repo and remains readable (read-only, as above).
+project root — no home directory, no system temp, no sibling checkouts.
