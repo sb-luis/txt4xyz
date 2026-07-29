@@ -1,4 +1,4 @@
-// txt4.xyz backend: a websocket relay for collaborative Yjs documents. Rooms
+// txt4xyz backend: a websocket relay for collaborative Yjs documents. Rooms
 // are ephemeral and in-memory; the server relays opaque binary blobs between
 // participants and has no database, no auth, and no CRDT logic of its own.
 package main

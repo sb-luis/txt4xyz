@@ -28,17 +28,15 @@ const ANIMALS = [
   "ibis",
 ];
 
-// Legible against the dark editor surface (oklch L≈0.24): kept in the
-// L 0.72–0.8 / C 0.13–0.17 band so every entry reads clearly regardless of hue.
+// Monochrome by design (no per-participant hue): a spread of neutral
+// lightnesses dark enough to hold 4.5:1 against the fixed light avatar-initial
+// text (see AVATAR_CLASS), legible against each other and either app theme.
 const PALETTE = [
-  "oklch(0.78 0.15 25)",
-  "oklch(0.78 0.14 60)",
-  "oklch(0.75 0.16 100)",
-  "oklch(0.8 0.13 145)",
-  "oklch(0.78 0.13 190)",
-  "oklch(0.78 0.14 230)",
-  "oklch(0.76 0.16 280)",
-  "oklch(0.78 0.16 330)",
+  "oklch(0.28 0 0)",
+  "oklch(0.34 0 0)",
+  "oklch(0.4 0 0)",
+  "oklch(0.46 0 0)",
+  "oklch(0.52 0 0)",
 ];
 
 export interface Identity {

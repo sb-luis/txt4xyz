@@ -21,5 +21,10 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+    // Vitest stubs out CSS imports by default (they don't affect test
+    // behavior in jsdom); index.css.test.ts needs the real text via `?raw`
+    // to check token contrast, so opt that one file back into real content.
+    css: { include: [/index\.css/] },
   },
 });

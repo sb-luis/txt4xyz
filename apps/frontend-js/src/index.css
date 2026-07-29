@@ -2,18 +2,63 @@
 
 @theme {
   --font-mono: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
+    sans-serif;
 
-  --color-app-bg: oklch(0.19 0.01 260);
-  --color-app-surface: oklch(0.24 0.012 260);
-  --color-app-border: oklch(0.34 0.012 260);
-  --color-app-fg: oklch(0.92 0.005 260);
-  --color-app-muted: oklch(0.62 0.01 260);
-  --color-app-accent: oklch(0.75 0.15 165);
-  --color-app-error: oklch(0.7 0.18 25);
+  --color-app-bg: var(--app-bg);
+  --color-app-surface: var(--app-surface);
+  --color-app-border: var(--app-border);
+  --color-app-fg: var(--app-fg);
+  --color-app-muted: var(--app-muted);
+  --color-app-accent: var(--app-accent);
+  --color-app-accent-fg: var(--app-accent-fg);
+  --color-app-error: var(--app-error);
+}
+
+:root {
+  --app-bg: oklch(100% 0.00011 271.152);
+  --app-surface: oklch(0.995 0 0);
+  --app-border: oklch(88.994% 0.00216 14.621);
+  --app-fg: oklch(15.674% 0.00002 271.152);
+  --app-muted: oklch(0.4 0 0);
+  --app-accent: oklch(27.685% 0.00003 271.152);
+  --app-accent-fg: oklch(0.99 0 0);
+  --app-error: oklch(0.45 0.19 25);
+
+  --editor-keyword: oklch(0.3 0 0);
+  --editor-function: oklch(0.38 0 0);
+  --editor-number: oklch(0.45 0 0);
+  --editor-string: oklch(0.5 0 0);
+  --editor-comment: oklch(0.55 0 0);
+  --editor-active-line: oklch(0.94 0 0);
+}
+
+:root[data-theme="dark"] {
+  --app-bg: oklch(18.22% 0.00002 271.152);
+  --app-surface: oklch(0.19 0 0);
+  --app-border: oklch(26.862% 0.00003 271.152);
+  --app-fg: oklch(0.92 0 0);
+  --app-muted: oklch(0.72 0 0);
+  --app-accent: oklch(0.75 0 0);
+  --app-accent-fg: oklch(0.15 0 0);
+  --app-error: oklch(0.72 0.17 25);
+
+  --editor-keyword: oklch(0.88 0 0);
+  --editor-function: oklch(0.8 0 0);
+  --editor-number: oklch(0.72 0 0);
+  --editor-string: oklch(0.65 0 0);
+  --editor-comment: oklch(0.64 0 0);
+  --editor-active-line: color-mix(in oklch, var(--app-border) 40%, transparent);
 }
 
 html,
 body,
 #root {
   height: 100%;
+}
+
+body {
+  background-color: var(--app-bg);
+  color-scheme: light dark;
 }

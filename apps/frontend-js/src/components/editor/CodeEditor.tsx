@@ -11,7 +11,7 @@ import { editorHighlightStyle, editorTheme } from "./theme";
 
 // Bounds editor and Pyodide performance and localStorage usage, not the wire:
 // Yjs sync payload size tracks edit history, not document length.
-const MAX_DOC_LENGTH = 100_000;
+export const MAX_DOC_LENGTH = 100_000;
 
 // Only user-originated transactions carry a userEvent annotation; remote y-sync
 // updates do not. Reading it wrong must never reject a remote update, so an

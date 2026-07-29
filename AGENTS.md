@@ -1,4 +1,4 @@
-# txt4.xyz
+# txt4xyz
 
 A collaborative, in-browser Python scratchpad. Python runs client-side in WebAssembly (Pyodide);
 a from-scratch Go websocket server relays Yjs CRDT updates between participants. No auth, no

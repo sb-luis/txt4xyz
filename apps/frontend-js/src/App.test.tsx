@@ -37,7 +37,7 @@ describe("App", () => {
   it("renders the homepage with an editor CTA at the root path", () => {
     window.history.pushState({}, "", "/");
     render(<App />);
-    expect(screen.getByText("txt4.xyz")).toBeTruthy();
+    expect(screen.getByText("txt4xyz")).toBeTruthy();
     expect(screen.getByRole("link", { name: /open the editor/i })).toBeTruthy();
     expect(screen.queryByRole("region", { name: "editor" })).toBeNull();
   });

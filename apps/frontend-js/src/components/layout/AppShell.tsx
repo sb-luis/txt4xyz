@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CodeEditor } from "@/components/editor/CodeEditor";
+import { CodeEditor, MAX_DOC_LENGTH } from "@/components/editor/CodeEditor";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Pane } from "@/components/layout/Pane";
+import { StatusBar } from "@/components/layout/StatusBar";
 import { OutputPane } from "@/components/output/OutputPane";
 import { usePythonRunner } from "@/lib/python/usePythonRunner";
 import { resolveEditorRoomId } from "@/lib/collab/room";
 import { useRoom } from "@/lib/collab/useRoom";
+import { ThemeProvider } from "@/lib/theme/ThemeContext";
 
 export function AppShell() {
   const { status, output, run, stop, clearOutput } = usePythonRunner();
   const [roomId, setRoomId] = useState(() => resolveEditorRoomId());
+  const [docLength, setDocLength] = useState(0);
   const codeRef = useRef("");
   const { ytext, awareness, status: roomStatus, rejectedCode, participants } = useRoom(roomId);
 
@@ -31,31 +34,35 @@ export function AppShell() {
   }, [clearOutput, run]);
 
   return (
-    <div className="flex h-full flex-col bg-app-bg text-app-fg">
-      <AppHeader
-        status={status}
-        onRun={handleRun}
-        onStop={stop}
-        room={{ status: roomStatus, rejectedCode, participants }}
-      />
-      <main className="flex min-h-0 flex-1 flex-col gap-px overflow-hidden bg-app-border md:flex-row">
-        <Pane title="editor">
-          {ytext === null ? null : (
-            <CodeEditor
-              key={roomId}
-              initialDoc=""
-              ytext={ytext}
-              awareness={awareness}
-              onChange={(doc) => {
-                codeRef.current = doc;
-              }}
-            />
-          )}
-        </Pane>
-        <Pane title="output">
-          <OutputPane status={status} output={output} />
-        </Pane>
-      </main>
-    </div>
+    <ThemeProvider>
+      <div className="flex h-full flex-col bg-app-bg text-app-fg">
+        <AppHeader
+          status={status}
+          onRun={handleRun}
+          onStop={stop}
+          room={{ status: roomStatus, rejectedCode, participants }}
+        />
+        <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-app-bg px-3 py-0 md:flex-row">
+          <Pane title="editor">
+            {ytext === null ? null : (
+              <CodeEditor
+                key={roomId}
+                initialDoc=""
+                ytext={ytext}
+                awareness={awareness}
+                onChange={(doc) => {
+                  codeRef.current = doc;
+                  setDocLength(doc.length);
+                }}
+              />
+            )}
+          </Pane>
+          <Pane title="output">
+            <OutputPane status={status} output={output} />
+          </Pane>
+        </main>
+        <StatusBar runtimeStatus={status} docLength={docLength} maxDocLength={MAX_DOC_LENGTH} />
+      </div>
+    </ThemeProvider>
   );
 }

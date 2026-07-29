@@ -9,6 +9,9 @@ export const editorTheme = EditorView.theme(
       color: "var(--color-app-fg)",
       backgroundColor: "var(--color-app-surface)",
     },
+    "&.cm-focused": {
+      outline: "none",
+    },
     ".cm-content": {
       caretColor: "var(--color-app-fg)",
       fontFamily: "var(--font-mono)",
@@ -25,10 +28,10 @@ export const editorTheme = EditorView.theme(
       border: "none",
     },
     ".cm-activeLine": {
-      backgroundColor: "color-mix(in oklch, var(--color-app-border) 40%, transparent)",
+      backgroundColor: "var(--editor-active-line)",
     },
     ".cm-activeLineGutter": {
-      backgroundColor: "color-mix(in oklch, var(--color-app-border) 40%, transparent)",
+      backgroundColor: "var(--editor-active-line)",
     },
     ".cm-scroller": {
       overflow: "auto",
@@ -37,14 +40,20 @@ export const editorTheme = EditorView.theme(
   { dark: true },
 );
 
+// With no hue left to lean on, tokens are told apart by lightness *and*
+// weight/style — two grays of similar value would otherwise be indistinguishable.
 export const editorHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: "var(--color-app-accent)" },
-  { tag: tags.controlKeyword, color: "var(--color-app-accent)" },
-  { tag: [tags.string, tags.special(tags.string)], color: "oklch(0.8 0.13 145)" },
-  { tag: tags.comment, color: "var(--color-app-muted)", fontStyle: "italic" },
-  { tag: [tags.number, tags.bool, tags.null], color: "oklch(0.78 0.14 60)" },
-  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: "oklch(0.8 0.1 230)" },
+  { tag: tags.keyword, color: "var(--editor-keyword)", fontWeight: "bold" },
+  { tag: tags.controlKeyword, color: "var(--editor-keyword)", fontWeight: "bold" },
+  { tag: [tags.string, tags.special(tags.string)], color: "var(--editor-string)" },
+  { tag: tags.comment, color: "var(--editor-comment)", fontStyle: "italic" },
+  { tag: [tags.number, tags.bool, tags.null], color: "var(--editor-number)" },
+  {
+    tag: [tags.function(tags.variableName), tags.function(tags.propertyName)],
+    color: "var(--editor-function)",
+    fontWeight: "bold",
+  },
   { tag: tags.definition(tags.variableName), color: "var(--color-app-fg)" },
   { tag: tags.operator, color: "var(--color-app-fg)" },
-  { tag: tags.className, color: "oklch(0.8 0.1 230)" },
+  { tag: tags.className, color: "var(--editor-function)", fontWeight: "bold" },
 ]);
