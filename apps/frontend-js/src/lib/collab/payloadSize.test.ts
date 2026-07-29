@@ -4,9 +4,20 @@ import * as encoding from "lib0/encoding";
 import * as syncProtocol from "y-protocols/sync";
 import { createRoomDoc } from "./room";
 
-// Pins two ways a Yjs full-document sync payload can silently balloon: broken
+// Pins the ways a Yjs full-document sync payload can silently balloon: broken
 // item coalescing during sequential typing, and garbage collection left off.
 // Both regressions would still "work" functionally, just at far higher cost.
+
+// Mirrors defaultMaxMessageSize in apps/backend-go/internal/relay/relay.go.
+// Nothing enforces that these two stay equal; a change there needs a change here.
+const RELAY_MAX_FRAME_BYTES = 2 * 1024 * 1024;
+
+function syncStep2Bytes(doc: Y.Doc): number {
+  const encoder = encoding.createEncoder();
+  syncProtocol.writeSyncStep2(encoder, doc, Y.encodeStateVector(new Y.Doc()));
+  return encoding.toUint8Array(encoder).length;
+}
+
 describe("full-document sync payload size", () => {
   it("stays near 1 byte per character when 40,000 characters are typed sequentially", () => {
     const doc = new Y.Doc();
@@ -38,5 +49,30 @@ describe("full-document sync payload size", () => {
     const bytes = encoding.toUint8Array(encoder).length;
 
     expect(bytes).toBeLessThan(5_000);
+  });
+
+  // A full sync is one frame carrying the whole document, so it must fit under
+  // the relay's read limit. An oversize frame closes the sender, which
+  // reconnects and resends the same frame, looping forever.
+  it("keeps a churn-heavy session's full sync under the relay's frame limit", () => {
+    const doc = createRoomDoc();
+    const ytext = doc.getText("shared");
+
+    // Scattered positions, not random ones: Yjs merges an insert into its
+    // neighbour only when contiguous, so a prime stride fragments the rope just
+    // as well as a PRNG while staying reproducible by construction.
+    const stride = 7919;
+    const snippet = "total = reduce(add, rows, 0)\n";
+    ytext.insert(0, snippet.repeat(700));
+    const held = ytext.length;
+
+    for (let i = 0; i < 40_000; i++) {
+      ytext.insert((i * stride) % ytext.length, snippet);
+      const excess = ytext.length - held;
+      if (excess > 0) ytext.delete(((i + 7) * stride) % (ytext.length - excess), excess);
+    }
+
+    expect(ytext.length).toBe(held);
+    expect(syncStep2Bytes(doc)).toBeLessThan(RELAY_MAX_FRAME_BYTES);
   });
 });
