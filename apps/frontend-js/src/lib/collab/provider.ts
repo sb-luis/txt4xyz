@@ -127,9 +127,14 @@ export class SyncProvider {
     };
     this.awareness.on("update", this.awarenessUpdateHandler);
 
+    // Everything else here is environment-agnostic; only the unload hooks need
+    // a browser. Guarding them lets the integration test drive the provider
+    // from Node against a real relay.
     this.handleUnload = () => this.destroy();
-    window.addEventListener("beforeunload", this.handleUnload);
-    window.addEventListener("pagehide", this.handleUnload);
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", this.handleUnload);
+      window.addEventListener("pagehide", this.handleUnload);
+    }
 
     this.connect();
   }
@@ -158,8 +163,10 @@ export class SyncProvider {
       clearTimeout(this.awarenessTimer);
       this.awarenessTimer = null;
     }
-    window.removeEventListener("beforeunload", this.handleUnload);
-    window.removeEventListener("pagehide", this.handleUnload);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("beforeunload", this.handleUnload);
+      window.removeEventListener("pagehide", this.handleUnload);
+    }
     this.doc.off("update", this.updateHandler);
     this.awareness.off("update", this.awarenessUpdateHandler);
     this.removeLocalAwarenessState();

@@ -734,4 +734,34 @@ describe("no ghost cursors", () => {
     const decoder = decoding.createDecoder(lastFrame);
     expect(decoding.readVarUint(decoder)).toBe(1);
   });
+
+  it.each(["pagehide", "beforeunload"])(
+    "tears down on %s, since the relay never tells peers that someone left",
+    async (eventName) => {
+      const { doc, awareness } = newDocAndAwareness();
+      let socket!: FakeSocket;
+      const provider = new SyncProvider({
+        doc,
+        awareness,
+        url: "wss://example.invalid/relay",
+        roomId: "room",
+        createWebSocket: () => {
+          socket = new FakeSocket();
+          return socket;
+        },
+      });
+
+      socket.open();
+      await flushMicrotasks();
+      expect(awareness.getStates().has(doc.clientID)).toBe(true);
+
+      window.dispatchEvent(new Event(eventName));
+      await flushMicrotasks();
+
+      expect(awareness.getStates().has(doc.clientID)).toBe(false);
+      expect(socket.closeCalls).toBe(1);
+
+      provider.destroy();
+    },
+  );
 });
