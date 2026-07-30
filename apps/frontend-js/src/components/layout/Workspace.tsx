@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CollapseExpandToggle } from "@/components/ui/CollapseExpandToggle";
 
 export interface WorkspaceProps {
   editor: ReactNode;
@@ -28,36 +29,7 @@ export function Workspace({ editor, output, outputCollapsed, onToggleOutput }: W
         </header>
         <div className="min-h-0 flex-1 overflow-auto p-4">{editor}</div>
 
-        <button
-          type="button"
-          onClick={onToggleOutput}
-          aria-expanded={!outputCollapsed}
-          aria-controls="output-panel"
-          aria-label={outputCollapsed ? "expand output" : "collapse output"}
-          className="absolute bottom-3 left-1/2 z-10 flex h-7 w-7 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full bg-app-button-bg text-app-button-fg shadow-sm transition hover:bg-app-button-bg-hover md:bottom-auto md:left-auto md:right-3 md:top-1/2 md:translate-x-0 md:-translate-y-1/2"
-        >
-          {/* Points the direction the click will collapse the panel toward
-              (down on mobile, right on desktop); flips 180° once collapsed
-              to point back the way it will expand. */}
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className={`h-4 w-4 transition-transform duration-300 ease-in-out md:hidden ${outputCollapsed ? "rotate-180" : ""}`}
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className={`hidden h-4 w-4 transition-transform duration-300 ease-in-out md:block ${outputCollapsed ? "rotate-180" : ""}`}
-          >
-            <path d="M9 6l6 6-6 6" />
-          </svg>
-        </button>
+        <CollapseExpandToggle collapsed={outputCollapsed} onToggle={onToggleOutput} />
       </section>
 
       <div className="flex min-h-0 min-w-0 flex-col overflow-hidden md:flex-row">

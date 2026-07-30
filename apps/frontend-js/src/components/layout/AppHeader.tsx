@@ -2,7 +2,7 @@ import type { RunnerStatus } from "@/lib/python/runner";
 import type { ConnectionStatus } from "@/lib/collab/provider";
 import type { Participant } from "@/lib/collab/useRoom";
 import { ParticipantsList } from "@/components/collab/ParticipantsList";
-import { Button } from "@/components/ui/Button";
+import { RunStopButton } from "@/components/ui/RunStopButton";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 
 export interface AppHeaderProps {
@@ -20,15 +20,7 @@ export function AppHeader({ status, onRun, onStop, room }: AppHeaderProps) {
       </span>
       <div className="flex shrink-0 items-center gap-3">
         <ParticipantsList room={room} />
-        {status === "running" ? (
-          <Button variant="danger" onClick={onStop}>
-            Stop
-          </Button>
-        ) : (
-          <Button disabled={status !== "ready"} onClick={onRun}>
-            Run
-          </Button>
-        )}
+        <RunStopButton status={status} onRun={onRun} onStop={onStop} />
         <ThemeSwitcher />
       </div>
     </header>
