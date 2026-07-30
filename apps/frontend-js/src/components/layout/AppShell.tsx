@@ -8,6 +8,7 @@ import { usePythonRunner } from "@/lib/python/usePythonRunner";
 import { resolveEditorRoomId } from "@/lib/collab/room";
 import { useRoom } from "@/lib/collab/useRoom";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
+import { VimModeProvider } from "@/lib/vim/VimModeContext";
 import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
 
 export function AppShell() {
@@ -50,36 +51,38 @@ export function AppShell() {
 
   return (
     <ThemeProvider>
-      <div className="flex h-full flex-col bg-app-bg text-app-fg">
-        <AppHeader
-          status={status}
-          onRun={handleRun}
-          onStop={handleStop}
-          room={{ status: roomStatus, rejectedCode, participants }}
-        />
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg px-3 py-0">
-          <Workspace
-            outputCollapsed={outputCollapsed}
-            onToggleOutput={handleToggleOutput}
-            editor={
-              ytext === null ? null : (
-                <CodeEditor
-                  key={roomId}
-                  initialDoc=""
-                  ytext={ytext}
-                  awareness={awareness}
-                  onChange={(doc) => {
-                    codeRef.current = doc;
-                    setDocLength(doc.length);
-                  }}
-                />
-              )
-            }
-            output={<OutputPane status={status} output={output} />}
+      <VimModeProvider>
+        <div className="flex h-full flex-col bg-app-bg text-app-fg">
+          <AppHeader
+            status={status}
+            onRun={handleRun}
+            onStop={handleStop}
+            room={{ status: roomStatus, rejectedCode, participants }}
           />
-        </main>
-        <StatusBar runtimeStatus={status} docLength={docLength} maxDocLength={MAX_DOC_LENGTH} />
-      </div>
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg px-3 py-0">
+            <Workspace
+              outputCollapsed={outputCollapsed}
+              onToggleOutput={handleToggleOutput}
+              editor={
+                ytext === null ? null : (
+                  <CodeEditor
+                    key={roomId}
+                    initialDoc=""
+                    ytext={ytext}
+                    awareness={awareness}
+                    onChange={(doc) => {
+                      codeRef.current = doc;
+                      setDocLength(doc.length);
+                    }}
+                  />
+                )
+              }
+              output={<OutputPane status={status} output={output} />}
+            />
+          </main>
+          <StatusBar runtimeStatus={status} docLength={docLength} maxDocLength={MAX_DOC_LENGTH} />
+        </div>
+      </VimModeProvider>
     </ThemeProvider>
   );
 }

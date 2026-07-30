@@ -1,13 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
+import { VimModeProvider } from "@/lib/vim/VimModeContext";
 import { SettingsModal } from "./SettingsModal";
 
 describe("SettingsModal", () => {
   it("lists shortcuts and includes a working theme switcher", () => {
     render(
       <ThemeProvider>
-        <SettingsModal open onClose={vi.fn()} />
+        <VimModeProvider>
+          <SettingsModal open onClose={vi.fn()} />
+        </VimModeProvider>
       </ThemeProvider>,
     );
 
@@ -18,5 +21,24 @@ describe("SettingsModal", () => {
     const before = document.documentElement.getAttribute("data-theme");
     fireEvent.click(screen.getByRole("button", { name: /switch to (dark|light) mode/ }));
     expect(document.documentElement.getAttribute("data-theme")).not.toBe(before);
+  });
+
+  it("toggles vim keybindings on and persists the choice", () => {
+    window.localStorage.removeItem("txt4xyz:vim-mode");
+    render(
+      <ThemeProvider>
+        <VimModeProvider>
+          <SettingsModal open onClose={vi.fn()} />
+        </VimModeProvider>
+      </ThemeProvider>,
+    );
+
+    const toggle = screen.getByRole("switch", { name: "toggle vim keybindings" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+
+    fireEvent.click(toggle);
+
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(window.localStorage.getItem("txt4xyz:vim-mode")).toBe("true");
   });
 });

@@ -2,12 +2,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
+import { VimModeProvider } from "@/lib/vim/VimModeContext";
 import { AppHeader } from "./AppHeader";
 
 const DISCONNECTED_ROOM = { status: "disconnected" as const, rejectedCode: null, participants: [] };
 
 function withTheme(element: ReactElement) {
-  return <ThemeProvider>{element}</ThemeProvider>;
+  return (
+    <ThemeProvider>
+      <VimModeProvider>{element}</VimModeProvider>
+    </ThemeProvider>
+  );
 }
 
 describe("AppHeader", () => {
