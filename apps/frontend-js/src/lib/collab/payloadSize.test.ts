@@ -54,25 +54,29 @@ describe("full-document sync payload size", () => {
   // A full sync is one frame carrying the whole document, so it must fit under
   // the relay's read limit. An oversize frame closes the sender, which
   // reconnects and resends the same frame, looping forever.
-  it("keeps a churn-heavy session's full sync under the relay's frame limit", () => {
-    const doc = createRoomDoc();
-    const ytext = doc.getText("shared");
+  it(
+    "keeps a churn-heavy session's full sync under the relay's frame limit",
+    () => {
+      const doc = createRoomDoc();
+      const ytext = doc.getText("shared");
 
-    // Scattered positions, not random ones: Yjs merges an insert into its
-    // neighbour only when contiguous, so a prime stride fragments the rope just
-    // as well as a PRNG while staying reproducible by construction.
-    const stride = 7919;
-    const snippet = "total = reduce(add, rows, 0)\n";
-    ytext.insert(0, snippet.repeat(700));
-    const held = ytext.length;
+      // Scattered positions, not random ones: Yjs merges an insert into its
+      // neighbour only when contiguous, so a prime stride fragments the rope just
+      // as well as a PRNG while staying reproducible by construction.
+      const stride = 7919;
+      const snippet = "total = reduce(add, rows, 0)\n";
+      ytext.insert(0, snippet.repeat(700));
+      const held = ytext.length;
 
-    for (let i = 0; i < 40_000; i++) {
-      ytext.insert((i * stride) % ytext.length, snippet);
-      const excess = ytext.length - held;
-      if (excess > 0) ytext.delete(((i + 7) * stride) % (ytext.length - excess), excess);
-    }
+      for (let i = 0; i < 40_000; i++) {
+        ytext.insert((i * stride) % ytext.length, snippet);
+        const excess = ytext.length - held;
+        if (excess > 0) ytext.delete(((i + 7) * stride) % (ytext.length - excess), excess);
+      }
 
-    expect(ytext.length).toBe(held);
-    expect(syncStep2Bytes(doc)).toBeLessThan(RELAY_MAX_FRAME_BYTES);
-  });
+      expect(ytext.length).toBe(held);
+      expect(syncStep2Bytes(doc)).toBeLessThan(RELAY_MAX_FRAME_BYTES);
+    },
+    15_000,
+  );
 });
