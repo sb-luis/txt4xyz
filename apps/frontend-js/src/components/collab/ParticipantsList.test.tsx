@@ -49,11 +49,11 @@ describe("ParticipantsList", () => {
 
   it("caps visible avatars at 3 and shows an overflow badge for the rest", () => {
     const participants = [
-      { clientId: 1, name: "ava", color: "oklch(0.8 0.1 200)" },
-      { clientId: 2, name: "bo", color: "oklch(0.8 0.1 100)" },
-      { clientId: 3, name: "cy", color: "oklch(0.8 0.1 50)" },
-      { clientId: 4, name: "dee", color: "oklch(0.8 0.1 300)" },
-      { clientId: 5, name: "eli", color: "oklch(0.8 0.1 150)" },
+      { clientId: 1, name: "ava" },
+      { clientId: 2, name: "bo" },
+      { clientId: 3, name: "cy" },
+      { clientId: 4, name: "dee" },
+      { clientId: 5, name: "eli" },
     ];
     render(<ParticipantsList room={{ status: "connected", rejectedCode: null, participants }} />);
 
@@ -63,8 +63,8 @@ describe("ParticipantsList", () => {
 
   it("opens a popover with just the full participant list once connected", () => {
     const participants = [
-      { clientId: 1, name: "ava", color: "oklch(0.8 0.1 200)" },
-      { clientId: 2, name: "bo", color: "oklch(0.8 0.1 100)" },
+      { clientId: 1, name: "ava" },
+      { clientId: 2, name: "bo" },
     ];
     render(<ParticipantsList room={{ status: "connected", rejectedCode: null, participants }} />);
 

@@ -18,10 +18,10 @@ export interface PopoverProps {
 }
 
 const DEFAULT_TRIGGER_CLASS =
-  "flex cursor-pointer items-center gap-1.5 font-mono text-xs text-app-muted hover:text-app-fg";
+  "flex cursor-pointer items-center gap-1.5 font-mono text-xs text-app-fg/60 hover:text-app-fg";
 
 const DEFAULT_PANEL_CLASS =
-  "absolute left-0 top-full z-10 mt-1.5 min-w-max rounded border border-app-border bg-app-surface p-2 font-mono text-xs text-app-fg";
+  "absolute left-0 top-full z-10 mt-1.5 min-w-max rounded border border-app-hairline bg-app-surface-bg p-2 font-mono text-xs text-app-surface-fg";
 
 /**
  * Anchor-based popover: a trigger button that opens a panel positioned

@@ -16,13 +16,15 @@ const COLLAPSED_TRACKS = "grid-rows-[1fr_0fr] md:grid-cols-[1fr_0fr]";
 export function Workspace({ editor, output, outputCollapsed, onToggleOutput }: WorkspaceProps) {
   return (
     <div
-      className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-lg border border-app-border bg-app-surface shadow-sm transition-[grid-template-rows,grid-template-columns] duration-300 ease-in-out md:grid-rows-1 ${
+      className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-lg border border-app-hairline bg-app-bg shadow-sm transition-[grid-template-rows,grid-template-columns] duration-300 ease-in-out md:grid-rows-1 ${
         outputCollapsed ? COLLAPSED_TRACKS : EXPANDED_TRACKS
       }`}
     >
       <section aria-label="editor" className="relative flex min-h-0 min-w-0 flex-col overflow-hidden">
-        <header className="shrink-0 border-b border-app-border px-4 py-2">
-          <h2 className="font-mono text-xs uppercase tracking-wide text-app-muted">editor</h2>
+        <header className="shrink-0 border-b border-app-hairline px-4 py-2">
+          <h2 className="font-mono text-xs uppercase tracking-wide text-app-fg/70">
+            editor
+          </h2>
         </header>
         <div className="min-h-0 flex-1 overflow-auto p-4">{editor}</div>
 
@@ -32,7 +34,7 @@ export function Workspace({ editor, output, outputCollapsed, onToggleOutput }: W
           aria-expanded={!outputCollapsed}
           aria-controls="output-panel"
           aria-label={outputCollapsed ? "expand output" : "collapse output"}
-          className="absolute bottom-3 left-1/2 z-10 flex h-7 w-7 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-app-border bg-app-surface text-app-muted shadow-sm transition hover:text-app-fg md:bottom-auto md:left-auto md:right-3 md:top-1/2 md:translate-x-0 md:-translate-y-1/2"
+          className="absolute bottom-3 left-1/2 z-10 flex h-7 w-7 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full bg-app-button-bg text-app-button-fg shadow-sm transition hover:bg-app-button-bg-hover md:bottom-auto md:left-auto md:right-3 md:top-1/2 md:translate-x-0 md:-translate-y-1/2"
         >
           {/* Points the direction the click will collapse the panel toward
               (down on mobile, right on desktop); flips 180° once collapsed
@@ -59,7 +61,7 @@ export function Workspace({ editor, output, outputCollapsed, onToggleOutput }: W
       </section>
 
       <div className="flex min-h-0 min-w-0 flex-col overflow-hidden md:flex-row">
-        <div className="h-px w-full shrink-0 bg-app-border md:h-full md:w-px" />
+        <div className="h-px w-full shrink-0 bg-app-hairline md:h-full md:w-px" />
         <section
           id="output-panel"
           aria-label="output"
@@ -67,8 +69,10 @@ export function Workspace({ editor, output, outputCollapsed, onToggleOutput }: W
           inert={outputCollapsed}
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         >
-          <header className="shrink-0 border-b border-app-border px-4 py-2">
-            <h2 className="font-mono text-xs uppercase tracking-wide text-app-muted">output</h2>
+          <header className="shrink-0 border-b border-app-hairline px-4 py-2">
+            <h2 className="font-mono text-xs uppercase tracking-wide text-app-fg/70">
+              output
+            </h2>
           </header>
           <div className="min-h-0 flex-1 overflow-auto p-4">{output}</div>
         </section>

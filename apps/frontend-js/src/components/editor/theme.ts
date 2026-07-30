@@ -7,7 +7,7 @@ export const editorTheme = EditorView.theme(
     "&": {
       height: "100%",
       color: "var(--color-app-fg)",
-      backgroundColor: "var(--color-app-surface)",
+      backgroundColor: "var(--color-app-bg)",
     },
     "&.cm-focused": {
       outline: "none",
@@ -20,11 +20,11 @@ export const editorTheme = EditorView.theme(
       borderLeftColor: "var(--color-app-fg)",
     },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-      backgroundColor: "color-mix(in oklch, var(--color-app-accent) 30%, transparent)",
+      backgroundColor: "color-mix(in oklch, var(--editor-selection) 30%, transparent)",
     },
     ".cm-gutters": {
-      backgroundColor: "var(--color-app-surface)",
-      color: "var(--color-app-muted)",
+      backgroundColor: "var(--color-app-bg)",
+      color: "var(--editor-muted)",
       border: "none",
     },
     ".cm-lineNumbers .cm-gutterElement": {

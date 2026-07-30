@@ -8,7 +8,7 @@ export function ThemeSwitcher() {
       type="button"
       onClick={toggleTheme}
       aria-label={theme === "dark" ? "switch to light mode" : "switch to dark mode"}
-      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-app-border bg-app-surface text-app-muted transition hover:border-app-fg/40 hover:text-app-fg active:scale-[0.98]"
+      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-app-button-bg text-app-button-fg transition hover:bg-app-button-bg-hover active:scale-[0.98]"
     >
       {theme === "dark" ? (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">

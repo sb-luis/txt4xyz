@@ -23,7 +23,6 @@ export function relayUrl(): string {
 export interface Participant {
   clientId: number;
   name: string;
-  color: string;
 }
 
 export interface UseRoomResult {
@@ -47,9 +46,9 @@ const DISCONNECTED_SNAPSHOT: UseRoomResult = {
 function readParticipants(awareness: awarenessProtocol.Awareness): Participant[] {
   const participants: Participant[] = [];
   awareness.getStates().forEach((state, clientId) => {
-    const user = (state as { user?: { name?: unknown; color?: unknown } } | null)?.user;
-    if (typeof user?.name !== "string" || typeof user?.color !== "string") return;
-    participants.push({ clientId, name: user.name, color: user.color });
+    const user = (state as { user?: { name?: unknown } } | null)?.user;
+    if (typeof user?.name !== "string") return;
+    participants.push({ clientId, name: user.name });
   });
   participants.sort((a, b) => a.clientId - b.clientId);
   return participants;
@@ -57,7 +56,7 @@ function readParticipants(awareness: awarenessProtocol.Awareness): Participant[]
 
 function sameParticipants(a: Participant[], b: Participant[]): boolean {
   if (a.length !== b.length) return false;
-  return a.every((p, i) => p.clientId === b[i].clientId && p.name === b[i].name && p.color === b[i].color);
+  return a.every((p, i) => p.clientId === b[i].clientId && p.name === b[i].name);
 }
 
 export function useRoom(roomId: string | null): UseRoomResult {

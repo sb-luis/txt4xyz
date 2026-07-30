@@ -14,7 +14,7 @@ export function OutputPane({ status, output }: OutputPaneProps) {
   }, [output]);
 
   if (status === "loading") {
-    return <p className="font-mono text-sm text-app-muted">loading Python runtime…</p>;
+    return <p className="font-mono text-sm text-app-fg/70">loading Python runtime…</p>;
   }
 
   if (status === "error") {
@@ -22,7 +22,7 @@ export function OutputPane({ status, output }: OutputPaneProps) {
   }
 
   if (output.length === 0) {
-    return <p className="font-mono text-sm text-app-muted">Run your code to see output here.</p>;
+    return <p className="font-mono text-sm text-app-fg/70">Run your code to see output here.</p>;
   }
 
   return (

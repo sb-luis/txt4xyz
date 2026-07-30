@@ -3,12 +3,11 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "reac
 type Variant = "primary" | "danger";
 
 const BASE_CLASS =
-  "inline-flex h-9 items-center justify-center gap-2 rounded-lg border px-4 font-mono text-sm font-medium transition active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100";
+  "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-4 font-mono text-sm font-medium transition active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed disabled:bg-app-button-bg-disabled disabled:active:scale-100";
 
 const VARIANT_CLASS: Record<Variant, string> = {
-  primary: "border-app-border bg-app-surface text-app-fg hover:border-app-fg/40",
-  danger:
-    "border-app-error/50 bg-app-surface text-app-error hover:border-app-error hover:bg-app-error/5",
+  primary: "bg-app-button-bg text-app-button-fg hover:bg-app-button-bg-hover",
+  danger: "bg-app-surface-bg text-app-error hover:bg-app-error/10",
 };
 
 interface CommonProps {

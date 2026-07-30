@@ -19,7 +19,7 @@ function formatCount(value: number): string {
 
 export function StatusBar({ runtimeStatus, docLength, maxDocLength }: StatusBarProps) {
   return (
-    <footer className="flex shrink-0 items-center justify-between gap-4 px-4 py-2 font-mono text-xs text-app-muted">
+    <footer className="flex shrink-0 items-center justify-between gap-4 px-4 py-2 font-mono text-xs text-app-fg/70">
       <span>{RUNTIME_STATUS_LABEL[runtimeStatus]}</span>
       <span>
         {formatCount(docLength)} / {formatCount(maxDocLength)} chars

@@ -52,7 +52,6 @@ describe("useRoom awareness", () => {
     expect(result.current.awareness).not.toBeNull();
     expect(result.current.participants).toHaveLength(1);
     expect(result.current.participants[0].name).toEqual(expect.any(String));
-    expect(result.current.participants[0].color).toEqual(expect.any(String));
   });
 
   it("clears participants and awareness when leaving the room", () => {
@@ -105,7 +104,7 @@ describe("useRoom local backstop", () => {
 
     const peerDoc = new Y.Doc();
     const peerAwareness = new awarenessProtocol.Awareness(peerDoc);
-    peerAwareness.setLocalStateField("user", { name: "peer", color: "oklch(0.7 0.1 30)" });
+    peerAwareness.setLocalStateField("user", { name: "peer" });
     const update = awarenessProtocol.encodeAwarenessUpdate(peerAwareness, [peerDoc.clientID]);
 
     act(() => {

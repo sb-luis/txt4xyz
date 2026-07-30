@@ -9,10 +9,17 @@ import { Popover } from "@/components/ui/Popover";
 
 const MAX_VISIBLE_AVATARS = 3;
 
-// Text is a fixed white, not a themed token: avatar backgrounds come from the
-// identity palette (dark neutrals, same in both themes), not from app-bg.
 const AVATAR_CLASS =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-2 ring-app-bg font-mono text-sm font-semibold text-white";
+  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-medium";
+
+// Purely decorative and purely local: which of the two alternating surface
+// tones an avatar gets depends only on its position in this client's visible
+// list, never on anything synced through awareness. Two peers can (and will)
+// render the same participant in different tones.
+const AVATAR_TONE_CLASS = [
+  "bg-app-surface-bg text-app-surface-fg",
+  "bg-app-surface-secondary-bg text-app-surface-secondary-fg",
+];
 
 const ROOM_STATUS_LABEL: Record<ConnectionStatus, string> = {
   connecting: "connecting…",
@@ -42,7 +49,7 @@ function ConnectingIndicator() {
       {BOUNCE_DELAYS_MS.map((delay) => (
         <span
           key={delay}
-          className="h-1 w-1 animate-bounce rounded-full bg-app-muted"
+          className="h-1 w-1 animate-bounce rounded-full bg-app-fg/50"
           style={{ animationDelay: `${delay}ms` }}
         />
       ))}
@@ -67,18 +74,19 @@ export function ParticipantsList({ room }: ParticipantsListProps) {
       triggerClassName="flex cursor-pointer items-center"
       trigger={
         connected ? (
-          <span className="flex items-center -space-x-3">
-            {visible.map((participant) => (
+          <span className="flex items-center -space-x-2">
+            {visible.map((participant, index) => (
               <span
                 key={participant.clientId}
-                className={AVATAR_CLASS}
-                style={{ backgroundColor: participant.color }}
+                className={`${AVATAR_CLASS} ${AVATAR_TONE_CLASS[index % AVATAR_TONE_CLASS.length]}`}
               >
                 {participant.name.slice(0, 1).toUpperCase()}
               </span>
             ))}
             {hiddenCount > 0 && (
-              <span className={`${AVATAR_CLASS} bg-app-border text-app-muted`}>
+              <span
+                className={`${AVATAR_CLASS} ${AVATAR_TONE_CLASS[visible.length % AVATAR_TONE_CLASS.length]}`}
+              >
                 +{hiddenCount}
               </span>
             )}
@@ -95,7 +103,7 @@ export function ParticipantsList({ room }: ParticipantsListProps) {
           ))}
         </ul>
       ) : (
-        <p className="text-app-muted">{label}</p>
+        <p className="text-app-surface-fg/70">{label}</p>
       )}
     </Popover>
   );
