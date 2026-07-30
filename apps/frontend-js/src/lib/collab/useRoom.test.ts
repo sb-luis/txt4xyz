@@ -2,6 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import * as awarenessProtocol from "y-protocols/awareness";
+import * as encoding from "lib0/encoding";
+import * as decoding from "lib0/decoding";
 import { RESTORE_GRACE_MS, useRoom } from "./useRoom";
 import { roomStorageKey } from "@/lib/persistence/localStore";
 
@@ -16,19 +18,26 @@ class StubSocket {
   close() {}
 }
 
+let lastAutoOpenSocket: AutoOpenSocket | null = null;
+
 class AutoOpenSocket {
   binaryType = "";
   readyState = 1;
+  sent: Uint8Array[] = [];
   onopen: (() => void) | null = null;
   onclose: ((event: { code: number }) => void) | null = null;
   onerror: (() => void) | null = null;
   onmessage: ((event: { data: ArrayBuffer }) => void) | null = null;
-  send() {}
+  send(data: Uint8Array) {
+    this.sent.push(data);
+  }
   close() {
     this.readyState = 3;
     this.onclose?.({ code: 1000 });
   }
   constructor() {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- captures the instance for test assertions
+    lastAutoOpenSocket = this;
     queueMicrotask(() => this.onopen?.());
   }
 }
@@ -65,6 +74,64 @@ describe("useRoom awareness", () => {
 
     expect(result.current.participants).toHaveLength(0);
     expect(result.current.awareness).toBeNull();
+  });
+});
+
+describe("useRoom run broadcasts", () => {
+  beforeEach(() => {
+    vi.stubGlobal("WebSocket", AutoOpenSocket);
+  });
+
+  it("sends a run broadcast frame carrying the run id over the socket", async () => {
+    const { result } = renderHook(() => useRoom("runroom"));
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    const sentBefore = lastAutoOpenSocket!.sent.length;
+    act(() => {
+      result.current.broadcastRun("run-1");
+    });
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(lastAutoOpenSocket!.sent.length).toBe(sentBefore + 1);
+    const decoder = decoding.createDecoder(lastAutoOpenSocket!.sent.at(-1)!);
+    expect(decoding.readVarUint(decoder)).toBe(2); // MESSAGE_RUN
+    expect(decoding.readVarString(decoder)).toBe("run-1");
+  });
+
+  it("is a no-op when there is no live provider", () => {
+    const { result } = renderHook(() => useRoom(null));
+    expect(() => result.current.broadcastRun("run-1")).not.toThrow();
+  });
+
+  it("updates lastRunBroadcast when the provider fires onRunBroadcast", async () => {
+    const { result } = renderHook(() => useRoom("runroom2"));
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(result.current.lastRunBroadcast).toBeNull();
+
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, 2);
+    encoding.writeVarString(encoder, "run-abc");
+    encoding.writeVarUint(encoder, 42);
+    const bytes = encoding.toUint8Array(encoder);
+
+    act(() => {
+      lastAutoOpenSocket!.onmessage?.({
+        data: bytes.slice().buffer,
+      });
+    });
+
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(result.current.lastRunBroadcast).toEqual({ id: "run-abc", requestedBy: 42 });
   });
 });
 

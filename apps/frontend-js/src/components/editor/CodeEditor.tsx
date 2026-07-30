@@ -1,8 +1,9 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { python } from "@codemirror/lang-python";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
-import { Compartment, EditorState, Transaction } from "@codemirror/state";
-import { EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
+import { Compartment, EditorState, StateEffect, StateField, Transaction } from "@codemirror/state";
+import { Decoration, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
+import type { DecorationSet } from "@codemirror/view";
 import { vim } from "@replit/codemirror-vim";
 import { yCollab, yRemoteSelectionsTheme } from "y-codemirror.next";
 import { useEffect, useRef } from "react";
@@ -10,6 +11,30 @@ import type * as Y from "yjs";
 import type * as awarenessProtocol from "y-protocols/awareness";
 import { useVimMode } from "@/lib/vim/VimModeContext";
 import { editorTheme } from "./theme";
+
+// briefly highlight every line, then fade back.
+const RUN_FLASH_MS = 350;
+
+const setRunFlash = StateEffect.define<boolean>();
+
+const runFlashField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, tr) {
+    for (const effect of tr.effects) {
+      if (!effect.is(setRunFlash)) continue;
+      if (!effect.value) return Decoration.none;
+      const lineDecorations = [];
+      for (let i = 1; i <= tr.state.doc.lines; i++) {
+        lineDecorations.push(Decoration.line({ class: "cm-run-flash" }).range(tr.state.doc.line(i).from));
+      }
+      return Decoration.set(lineDecorations);
+    }
+    return decorations.map(tr.changes);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
 
 // Bounds editor and Pyodide performance and localStorage usage, not the wire:
 // Yjs sync payload size tracks edit history, not document length.
@@ -28,13 +53,16 @@ export interface CodeEditorProps {
   onChange: (doc: string) => void;
   ytext?: Y.Text;
   awareness?: awarenessProtocol.Awareness | null;
+  flashKey?: number;
 }
 
-export function CodeEditor({ initialDoc, onChange, ytext, awareness }: CodeEditorProps) {
+export function CodeEditor({ initialDoc, onChange, ytext, awareness, flashKey }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
   const viewRef = useRef<EditorView | null>(null);
   const vimCompartmentRef = useRef(new Compartment());
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialFlashKeyRef = useRef(true);
   const { vimMode } = useVimMode();
 
   useEffect(() => {
@@ -72,6 +100,7 @@ export function CodeEditor({ initialDoc, onChange, ytext, awareness }: CodeEdito
         yRemoteSelectionsTheme,
         EditorView.lineWrapping,
         enforceDocLengthCap,
+        runFlashField,
         ...(ytext ? [yCollab(ytext, awareness ?? null)] : []),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -101,6 +130,27 @@ export function CodeEditor({ initialDoc, onChange, ytext, awareness }: CodeEdito
       effects: vimCompartmentRef.current.reconfigure(vimMode ? [vim()] : []),
     });
   }, [vimMode]);
+
+  // Fires on every run 
+  useEffect(() => {
+    if (flashKey === undefined) return;
+    if (isInitialFlashKeyRef.current) {
+      isInitialFlashKeyRef.current = false;
+      return;
+    }
+    if (flashTimerRef.current !== null) clearTimeout(flashTimerRef.current);
+    viewRef.current?.dispatch({ effects: setRunFlash.of(true) });
+    flashTimerRef.current = setTimeout(() => {
+      flashTimerRef.current = null;
+      viewRef.current?.dispatch({ effects: setRunFlash.of(false) });
+    }, RUN_FLASH_MS);
+  }, [flashKey]);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current !== null) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
 
   return <div ref={containerRef} aria-label="code editor" className="h-full w-full text-sm" />;
 }

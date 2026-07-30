@@ -24,10 +24,11 @@ export const CLOSE_ROOM_FULL = 4001;
 export const CLOSE_AT_CAPACITY = 4002;
 export const CLOSE_INVALID_ROOM_ID = 4003;
 
-// y-websocket's convention: a leading varUint lets awareness share the socket
-// with sync, and leaves room for Phase 3's run broadcast.
+// y-websocket's convention: a leading varUint lets sync, awareness, and the
+// run broadcast share one socket.
 const MESSAGE_SYNC = 0;
 const MESSAGE_AWARENESS = 1;
+const MESSAGE_RUN = 2;
 
 const AWARENESS_COALESCE_MS = 50;
 
@@ -75,6 +76,7 @@ export class SyncProvider {
   private currentStatus: ConnectionStatus = "disconnected";
   private currentRejectedCode: number | null = null;
   private readonly statusListeners = new Set<(status: ConnectionStatus) => void>();
+  private readonly runBroadcastListeners = new Set<(runId: string, requestedBy: number) => void>();
   private readonly updateHandler: (update: Uint8Array, origin: unknown) => void;
   private readonly awarenessUpdateHandler: (
     changes: { added: number[]; updated: number[]; removed: number[] },
@@ -152,6 +154,19 @@ export class SyncProvider {
     return () => this.statusListeners.delete(listener);
   }
 
+  onRunBroadcast(listener: (runId: string, requestedBy: number) => void): () => void {
+    this.runBroadcastListeners.add(listener);
+    return () => this.runBroadcastListeners.delete(listener);
+  }
+
+  broadcastRun(runId: string): void {
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, MESSAGE_RUN);
+    encoding.writeVarString(encoder, runId);
+    encoding.writeVarUint(encoder, this.doc.clientID);
+    this.send(encoding.toUint8Array(encoder));
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
@@ -185,6 +200,7 @@ export class SyncProvider {
     });
     this.setStatus("disconnected");
     this.statusListeners.clear();
+    this.runBroadcastListeners.clear();
   }
 
   // Broadcast the removal before tearing the socket down, or peers keep this
@@ -297,6 +313,12 @@ export class SyncProvider {
           decoding.readTailAsUint8Array(decoder),
           this,
         );
+        break;
+      }
+      case MESSAGE_RUN: {
+        const runId = decoding.readVarString(decoder);
+        const requestedBy = decoding.readVarUint(decoder);
+        for (const listener of this.runBroadcastListeners) listener(runId, requestedBy);
         break;
       }
       default:

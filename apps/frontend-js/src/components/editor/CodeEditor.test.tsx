@@ -87,6 +87,34 @@ describe("CodeEditor", () => {
     expect(view.state.doc.toString()).toBe("print(1)");
   });
 
+  it("applies the run-flash decoration to every line when flashKey changes", () => {
+    const { container, rerender } = render(
+      <VimModeProvider>
+        <CodeEditor initialDoc={"a\nb\nc"} onChange={vi.fn()} flashKey={0} />
+      </VimModeProvider>,
+    );
+
+    expect(container.querySelectorAll(".cm-run-flash")).toHaveLength(0);
+
+    rerender(
+      <VimModeProvider>
+        <CodeEditor initialDoc={"a\nb\nc"} onChange={vi.fn()} flashKey={1} />
+      </VimModeProvider>,
+    );
+
+    expect(container.querySelectorAll(".cm-run-flash")).toHaveLength(3);
+  });
+
+  it("does not flash on initial mount even when flashKey is already set", () => {
+    const { container } = renderCodeEditor({
+      initialDoc: "a\nb",
+      onChange: vi.fn(),
+      flashKey: 5,
+    });
+
+    expect(container.querySelectorAll(".cm-run-flash")).toHaveLength(0);
+  });
+
   it("never rejects a remote Y.Text update even when it pushes the document past the character cap", () => {
     const doc = new Y.Doc();
     const ytext = doc.getText("shared");

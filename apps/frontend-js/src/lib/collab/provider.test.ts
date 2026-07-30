@@ -523,6 +523,24 @@ describe("message envelope", () => {
     providerB.destroy();
   });
 
+  it("delivers a run broadcast to a peer's onRunBroadcast listener with the run id and requesting client", async () => {
+    const { docA, providerA, providerB } = connectPeers();
+    await flushMicrotasks();
+
+    const received: Array<{ runId: string; requestedBy: number }> = [];
+    providerB.onRunBroadcast((runId, requestedBy) => {
+      received.push({ runId, requestedBy });
+    });
+
+    providerA.broadcastRun("run-123");
+    await flushMicrotasks();
+
+    expect(received).toEqual([{ runId: "run-123", requestedBy: docA.clientID }]);
+
+    providerA.destroy();
+    providerB.destroy();
+  });
+
   it("ignores an unknown message type instead of throwing", async () => {
     const { doc, awareness } = newDocAndAwareness();
     let socket!: FakeSocket;
@@ -542,7 +560,7 @@ describe("message envelope", () => {
 
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, 7);
-    encoding.writeVarString(encoder, "a future run-broadcast message");
+    encoding.writeVarString(encoder, "a message");
 
     // handleMessage runs detached from the onmessage callback (`void this.handleMessage(...)`),
     // so a throw inside it surfaces as an unhandled rejection rather than a

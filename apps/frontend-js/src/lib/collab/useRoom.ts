@@ -25,15 +25,24 @@ export interface Participant {
   name: string;
 }
 
+export interface RunBroadcast {
+  id: string;
+  requestedBy: number;
+}
+
 export interface UseRoomResult {
   ytext: Y.Text | null;
   awareness: awarenessProtocol.Awareness | null;
   status: ConnectionStatus;
   rejectedCode: number | null;
   participants: Participant[];
+  lastRunBroadcast: RunBroadcast | null;
+  broadcastRun: (runId: string) => void;
 }
 
 const EMPTY_PARTICIPANTS: Participant[] = [];
+
+const NOOP_BROADCAST_RUN = () => {};
 
 const DISCONNECTED_SNAPSHOT: UseRoomResult = {
   ytext: null,
@@ -41,6 +50,8 @@ const DISCONNECTED_SNAPSHOT: UseRoomResult = {
   status: "disconnected",
   rejectedCode: null,
   participants: EMPTY_PARTICIPANTS,
+  lastRunBroadcast: null,
+  broadcastRun: NOOP_BROADCAST_RUN,
 };
 
 function readParticipants(awareness: awarenessProtocol.Awareness): Participant[] {
@@ -64,6 +75,7 @@ export function useRoom(roomId: string | null, alias: string | null = null): Use
   const listenersRef = useRef(new Set<() => void>());
   const awarenessRef = useRef<awarenessProtocol.Awareness | null>(null);
   const placeholderNameRef = useRef<string | null>(null);
+  const providerRef = useRef<SyncProvider | null>(null);
 
   const subscribe = useCallback((onStoreChange: () => void) => {
     listenersRef.current.add(onStoreChange);
@@ -76,9 +88,14 @@ export function useRoom(roomId: string | null, alias: string | null = null): Use
     for (const listener of listenersRef.current) listener();
   }, []);
 
+  const broadcastRun = useCallback((runId: string) => {
+    providerRef.current?.broadcastRun(runId);
+  }, []);
+
   useEffect(() => {
     if (roomId === null) {
       awarenessRef.current = null;
+      providerRef.current = null;
       snapshotRef.current = DISCONNECTED_SNAPSHOT;
       notify();
       return;
@@ -98,12 +115,15 @@ export function useRoom(roomId: string | null, alias: string | null = null): Use
     let participants = readParticipants(awareness);
 
     const provider = new SyncProvider({ doc, awareness, url: relayUrl(), roomId });
+    providerRef.current = provider;
     snapshotRef.current = {
       ytext,
       awareness,
       status: provider.status,
       rejectedCode: provider.rejectedCode,
       participants,
+      lastRunBroadcast: null,
+      broadcastRun,
     };
     notify();
 
@@ -154,20 +174,27 @@ export function useRoom(roomId: string | null, alias: string | null = null): Use
       if (status === "connected") scheduleRestoreCheck();
     });
 
+    const unsubscribeRunBroadcast = provider.onRunBroadcast((id, requestedBy) => {
+      snapshotRef.current = { ...snapshotRef.current, lastRunBroadcast: { id, requestedBy } };
+      notify();
+    });
+
     return () => {
       if (restoreTimer !== null) clearTimeout(restoreTimer);
       writer.cancel();
       ytext.unobserve(onDocChange);
       awareness.off("change", onAwarenessChange);
       unsubscribe();
+      unsubscribeRunBroadcast();
       provider.destroy();
       awareness.destroy();
       doc.destroy();
       awarenessRef.current = null;
+      providerRef.current = null;
       snapshotRef.current = DISCONNECTED_SNAPSHOT;
       notify();
     };
-  }, [roomId, notify]);
+  }, [roomId, notify, broadcastRun]);
 
   // Runs after the effect above on every commit (mount, room change, or alias
   // change alike), so a stored alias always overwrites the placeholder name

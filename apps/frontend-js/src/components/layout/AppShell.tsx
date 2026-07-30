@@ -19,7 +19,18 @@ function AppShellInner() {
   const [outputCollapsed, setOutputCollapsed] = useState(false);
   const codeRef = useRef("");
   const { alias } = useAlias();
-  const { ytext, awareness, status: roomStatus, rejectedCode, participants } = useRoom(roomId, alias);
+  const {
+    ytext,
+    awareness,
+    status: roomStatus,
+    rejectedCode,
+    participants,
+    lastRunBroadcast,
+    broadcastRun,
+  } = useRoom(roomId, alias);
+  const [flashKey, setFlashKey] = useState(0);
+  const prevStatusRef = useRef(status);
+  const lastSeenRunBroadcastIdRef = useRef<string | null>(null);
 
   // Without this, a fragment change (back/forward, or pasting a room link into
   // an open tab) never reloads the page, so the app keeps relaying into the
@@ -33,12 +44,18 @@ function AppShellInner() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  const handleRun = useCallback(() => {
-    if (status !== "ready") return;
+  const runLocally = useCallback(() => {
+    if (status !== "ready") return false;
     clearOutput();
     run(codeRef.current);
     setOutputCollapsed(false);
+    return true;
   }, [status, clearOutput, run]);
+
+  const handleRun = useCallback(() => {
+    if (!runLocally()) return;
+    broadcastRun(crypto.randomUUID());
+  }, [runLocally, broadcastRun]);
 
   const handleStop = useCallback(() => {
     if (status !== "running") return;
@@ -50,6 +67,23 @@ function AppShellInner() {
   }, []);
 
   useGlobalShortcuts({ onRun: handleRun, onStop: handleStop, onToggleOutput: handleToggleOutput });
+
+  // a received broadcast runs locally (never re-broadcasts)
+  useEffect(() => {
+    if (lastRunBroadcast === null) return;
+    if (lastSeenRunBroadcastIdRef.current === lastRunBroadcast.id) return;
+    lastSeenRunBroadcastIdRef.current = lastRunBroadcast.id;
+    runLocally();
+  }, [lastRunBroadcast, runLocally]);
+
+  // the flash means "code is executing"
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    prevStatusRef.current = status;
+    if (prevStatus !== "running" && status === "running") {
+      setFlashKey((key) => key + 1);
+    }
+  }, [status]);
 
   return (
     <div className="flex h-full flex-col bg-app-bg text-app-fg">
@@ -70,6 +104,7 @@ function AppShellInner() {
                 initialDoc=""
                 ytext={ytext}
                 awareness={awareness}
+                flashKey={flashKey}
                 onChange={(doc) => {
                   codeRef.current = doc;
                   setDocLength(doc.length);
