@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:integration": "vitest run src/lib/collab/integration.test.ts"
   },
   "dependencies": {
     "@codemirror/commands": "6.10.4",

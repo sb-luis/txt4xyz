@@ -68,3 +68,51 @@ jobs:
       # a fan-out hub with a goroutine per connection and shared room maps.
       - name: Test
         run: go test -race ./...
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: apps/backend-go/go.mod
+          cache-dependency-path: apps/backend-go/go.sum
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: apps/frontend-js/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/frontend-js
+        run: npm ci
+
+      # Started and awaited in one step: a background process left behind by a
+      # finished step is not guaranteed to survive into the next one. Logs go to
+      # a file so a relay that dies is diagnosable rather than silent.
+      - name: Start relay
+        working-directory: apps/backend-go
+        run: |
+          go build -o "${{ runner.temp }}/relay" .
+          "${{ runner.temp }}/relay" > "${{ runner.temp }}/relay.log" 2>&1 &
+          for _ in $(seq 1 50); do
+            if (exec 3<>/dev/tcp/127.0.0.1/4000) 2>/dev/null; then
+              exec 3<&- 3>&-
+              exit 0
+            fi
+            sleep 0.2
+          done
+          echo "relay did not accept connections on :4000 within 10s"
+          exit 1
+
+      - name: Integration test
+        working-directory: apps/frontend-js
+        env:
+          VITE_RELAY_URL: ws://127.0.0.1:4000/ws
+        run: npm run test:integration
+
+      - name: Relay log
+        if: failure()
+        run: cat "${{ runner.temp }}/relay.log"
