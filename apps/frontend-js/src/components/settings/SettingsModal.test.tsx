@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { AliasProvider } from "@/lib/alias/AliasContext";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
 import { VimModeProvider } from "@/lib/vim/VimModeContext";
 import { SettingsModal } from "./SettingsModal";
@@ -9,7 +10,9 @@ describe("SettingsModal", () => {
     render(
       <ThemeProvider>
         <VimModeProvider>
-          <SettingsModal open onClose={vi.fn()} />
+          <AliasProvider>
+            <SettingsModal open onClose={vi.fn()} />
+          </AliasProvider>
         </VimModeProvider>
       </ThemeProvider>,
     );
@@ -28,7 +31,9 @@ describe("SettingsModal", () => {
     render(
       <ThemeProvider>
         <VimModeProvider>
-          <SettingsModal open onClose={vi.fn()} />
+          <AliasProvider>
+            <SettingsModal open onClose={vi.fn()} />
+          </AliasProvider>
         </VimModeProvider>
       </ThemeProvider>,
     );

@@ -15,17 +15,25 @@ export interface ModalProps {
 export function Modal({ open, onClose, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
+  // Depends only on `open`: focusing the panel (and re-attaching the Escape
+  // listener) should happen once per open/close transition, not whenever the
+  // caller passes a new `onClose` identity — that used to steal focus from
+  // interactive content inside the modal on every parent re-render.
   useEffect(() => {
     if (!open) return;
     panelRef.current?.focus();
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -59,9 +59,11 @@ function sameParticipants(a: Participant[], b: Participant[]): boolean {
   return a.every((p, i) => p.clientId === b[i].clientId && p.name === b[i].name);
 }
 
-export function useRoom(roomId: string | null): UseRoomResult {
+export function useRoom(roomId: string | null, alias: string | null = null): UseRoomResult {
   const snapshotRef = useRef<UseRoomResult>(DISCONNECTED_SNAPSHOT);
   const listenersRef = useRef(new Set<() => void>());
+  const awarenessRef = useRef<awarenessProtocol.Awareness | null>(null);
+  const placeholderNameRef = useRef<string | null>(null);
 
   const subscribe = useCallback((onStoreChange: () => void) => {
     listenersRef.current.add(onStoreChange);
@@ -76,6 +78,7 @@ export function useRoom(roomId: string | null): UseRoomResult {
 
   useEffect(() => {
     if (roomId === null) {
+      awarenessRef.current = null;
       snapshotRef.current = DISCONNECTED_SNAPSHOT;
       notify();
       return;
@@ -88,7 +91,9 @@ export function useRoom(roomId: string | null): UseRoomResult {
     // doc, so no cursor from a previous room can leak into a new one.
     const awareness = new awarenessProtocol.Awareness(doc);
     const identity = generateIdentity();
+    placeholderNameRef.current = identity.name;
     awareness.setLocalStateField("user", identity);
+    awarenessRef.current = awareness;
 
     let participants = readParticipants(awareness);
 
@@ -158,10 +163,22 @@ export function useRoom(roomId: string | null): UseRoomResult {
       provider.destroy();
       awareness.destroy();
       doc.destroy();
+      awarenessRef.current = null;
       snapshotRef.current = DISCONNECTED_SNAPSHOT;
       notify();
     };
   }, [roomId, notify]);
+
+  // Runs after the effect above on every commit (mount, room change, or alias
+  // change alike), so a stored alias always overwrites the placeholder name
+  // generated on init — and an alias picked mid-room updates live too.
+  useEffect(() => {
+    const awareness = awarenessRef.current;
+    if (awareness === null) return;
+    const name = alias ?? placeholderNameRef.current;
+    if (name === null) return;
+    awareness.setLocalStateField("user", { name });
+  }, [roomId, alias]);
 
   return useSyncExternalStore(subscribe, getSnapshot);
 }

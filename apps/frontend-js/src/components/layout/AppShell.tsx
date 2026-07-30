@@ -7,17 +7,19 @@ import { OutputPane } from "@/components/output/OutputPane";
 import { usePythonRunner } from "@/lib/python/usePythonRunner";
 import { resolveEditorRoomId } from "@/lib/collab/room";
 import { useRoom } from "@/lib/collab/useRoom";
+import { AliasProvider, useAlias } from "@/lib/alias/AliasContext";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
 import { VimModeProvider } from "@/lib/vim/VimModeContext";
 import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
 
-export function AppShell() {
+function AppShellInner() {
   const { status, output, run, stop, clearOutput } = usePythonRunner();
   const [roomId, setRoomId] = useState(() => resolveEditorRoomId());
   const [docLength, setDocLength] = useState(0);
   const [outputCollapsed, setOutputCollapsed] = useState(false);
   const codeRef = useRef("");
-  const { ytext, awareness, status: roomStatus, rejectedCode, participants } = useRoom(roomId);
+  const { alias } = useAlias();
+  const { ytext, awareness, status: roomStatus, rejectedCode, participants } = useRoom(roomId, alias);
 
   // Without this, a fragment change (back/forward, or pasting a room link into
   // an open tab) never reloads the page, so the app keeps relaying into the
@@ -50,38 +52,46 @@ export function AppShell() {
   useGlobalShortcuts({ onRun: handleRun, onStop: handleStop, onToggleOutput: handleToggleOutput });
 
   return (
+    <div className="flex h-full flex-col bg-app-bg text-app-fg">
+      <AppHeader
+        status={status}
+        onRun={handleRun}
+        onStop={handleStop}
+        room={{ status: roomStatus, rejectedCode, participants }}
+      />
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg px-3 py-0">
+        <Workspace
+          outputCollapsed={outputCollapsed}
+          onToggleOutput={handleToggleOutput}
+          editor={
+            ytext === null ? null : (
+              <CodeEditor
+                key={roomId}
+                initialDoc=""
+                ytext={ytext}
+                awareness={awareness}
+                onChange={(doc) => {
+                  codeRef.current = doc;
+                  setDocLength(doc.length);
+                }}
+              />
+            )
+          }
+          output={<OutputPane status={status} output={output} />}
+        />
+      </main>
+      <StatusBar runtimeStatus={status} docLength={docLength} maxDocLength={MAX_DOC_LENGTH} />
+    </div>
+  );
+}
+
+export function AppShell() {
+  return (
     <ThemeProvider>
       <VimModeProvider>
-        <div className="flex h-full flex-col bg-app-bg text-app-fg">
-          <AppHeader
-            status={status}
-            onRun={handleRun}
-            onStop={handleStop}
-            room={{ status: roomStatus, rejectedCode, participants }}
-          />
-          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg px-3 py-0">
-            <Workspace
-              outputCollapsed={outputCollapsed}
-              onToggleOutput={handleToggleOutput}
-              editor={
-                ytext === null ? null : (
-                  <CodeEditor
-                    key={roomId}
-                    initialDoc=""
-                    ytext={ytext}
-                    awareness={awareness}
-                    onChange={(doc) => {
-                      codeRef.current = doc;
-                      setDocLength(doc.length);
-                    }}
-                  />
-                )
-              }
-              output={<OutputPane status={status} output={output} />}
-            />
-          </main>
-          <StatusBar runtimeStatus={status} docLength={docLength} maxDocLength={MAX_DOC_LENGTH} />
-        </div>
+        <AliasProvider>
+          <AppShellInner />
+        </AliasProvider>
       </VimModeProvider>
     </ThemeProvider>
   );
