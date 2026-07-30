@@ -1,13 +1,13 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { python } from "@codemirror/lang-python";
-import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language";
+import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { EditorState, Transaction } from "@codemirror/state";
 import { EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { yCollab, yRemoteSelectionsTheme } from "y-codemirror.next";
 import { useEffect, useRef } from "react";
 import type * as Y from "yjs";
 import type * as awarenessProtocol from "y-protocols/awareness";
-import { editorHighlightStyle, editorTheme } from "./theme";
+import { editorTheme } from "./theme";
 
 // Bounds editor and Pyodide performance and localStorage usage, not the wire:
 // Yjs sync payload size tracks edit history, not document length.
@@ -51,7 +51,6 @@ export function CodeEditor({ initialDoc, onChange, ytext, awareness }: CodeEdito
         bracketMatching(),
         keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
         python(),
-        syntaxHighlighting(editorHighlightStyle),
         editorTheme,
         yRemoteSelectionsTheme,
         EditorView.lineWrapping,

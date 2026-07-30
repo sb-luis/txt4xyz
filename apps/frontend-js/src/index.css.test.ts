@@ -24,11 +24,6 @@ const TOKEN_NAMES = [
   "app-button-bg",
   "app-button-bg-hover",
   "app-button-fg",
-  "editor-keyword",
-  "editor-string",
-  "editor-number",
-  "editor-function",
-  "editor-comment",
 ] as const;
 
 type TokenName = (typeof TOKEN_NAMES)[number];
@@ -72,11 +67,6 @@ const PAIRS: Pair[] = [
   ["app-error", "app-bg", 4.5],
   ["app-button-fg", "app-button-bg", 4.5],
   ["app-button-fg", "app-button-bg-hover", 4.5],
-  ["editor-keyword", "app-bg", 4.5],
-  ["editor-string", "app-bg", 4.5],
-  ["editor-number", "app-bg", 4.5],
-  ["editor-function", "app-bg", 4.5],
-  ["editor-comment", "app-bg", 4.5],
   // Non-text UI boundaries (WCAG 1.4.11): buttons must be
   // visibly distinct from the page background, not just from their own text.
   ["app-button-bg", "app-bg", 3],
