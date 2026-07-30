@@ -32,6 +32,7 @@ export function AppShell() {
   const handleRun = useCallback(() => {
     clearOutput();
     run(codeRef.current);
+    setOutputCollapsed(false);
   }, [clearOutput, run]);
 
   return (
