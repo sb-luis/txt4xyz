@@ -49,7 +49,14 @@ export function CodeEditor({ initialDoc, onChange, ytext, awareness }: CodeEdito
         history(),
         indentOnInput(),
         bracketMatching(),
-        keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
+        // Consumes Mod-Enter before defaultKeymap's plain Enter binding can
+        // insert a newline, so the global Run shortcut doesn't also edit the doc.
+        keymap.of([
+          { key: "Mod-Enter", run: () => true },
+          indentWithTab,
+          ...defaultKeymap,
+          ...historyKeymap,
+        ]),
         python(),
         editorTheme,
         yRemoteSelectionsTheme,

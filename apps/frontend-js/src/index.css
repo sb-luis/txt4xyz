@@ -9,6 +9,7 @@
   --color-app-bg: var(--app-bg);
   --color-app-fg: var(--app-fg);
   --color-app-hairline: var(--app-hairline);
+  --color-app-border: var(--app-border);
   --color-app-surface-bg: var(--app-surface-bg);
   --color-app-surface-fg: var(--app-surface-fg);
   --color-app-surface-secondary-bg: var(--app-surface-secondary-bg);
@@ -24,6 +25,7 @@
   --app-bg: oklch(100% 0.00011 271.152);
   --app-fg: oklch(15.674% 0.00002 271.152);
   --app-hairline: oklch(88.994% 0.00216 14.621);
+  --app-border: oklch(60% 0 0);
 
   --app-surface-bg: oklch(91.052% 0.00106 11.805);
   --app-surface-fg: oklch(23.929% 0.00003 271.152);
@@ -42,6 +44,7 @@
   --app-bg: oklch(18.22% 0.00002 271.152);
   --app-fg: oklch(0.92 0 0);
   --app-hairline: oklch(26.862% 0.00003 271.152);
+  --app-border: oklch(55% 0 0);
 
   --app-surface-bg: oklch(26.448% 0.00003 271.152);
   --app-surface-fg: oklch(1 0 0);

@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { EditorView } from "@codemirror/view";
@@ -64,6 +64,18 @@ describe("CodeEditor", () => {
     view.dispatch({ changes: { from: 0, insert: "y".repeat(100_001) }, userEvent: "input.paste" });
 
     expect(view.state.doc.length).toBe(0);
+  });
+
+  it("does not insert a newline on Mod-Enter, leaving it for the global Run shortcut", () => {
+    const { container } = render(<CodeEditor initialDoc="print(1)" onChange={vi.fn()} />);
+
+    const contentEl = container.querySelector(".cm-content") as HTMLElement;
+    const view = EditorView.findFromDOM(contentEl)!;
+    view.dispatch({ selection: { anchor: view.state.doc.length } });
+
+    fireEvent.keyDown(contentEl, { key: "Enter", ctrlKey: true });
+
+    expect(view.state.doc.toString()).toBe("print(1)");
   });
 
   it("never rejects a remote Y.Text update even when it pushes the document past the character cap", () => {

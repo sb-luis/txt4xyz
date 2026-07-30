@@ -20,6 +20,7 @@ const TOKEN_NAMES = [
   "app-surface-fg",
   "app-surface-secondary-bg",
   "app-surface-secondary-fg",
+  "app-border",
   "app-error",
   "app-button-bg",
   "app-button-bg-hover",
@@ -70,6 +71,9 @@ const PAIRS: Pair[] = [
   // Non-text UI boundaries (WCAG 1.4.11): buttons must be
   // visibly distinct from the page background, not just from their own text.
   ["app-button-bg", "app-bg", 3],
+  // Same rule for app-border: it exists specifically to read as a visible
+  // separation (e.g. the settings modal), unlike the purely decorative hairline.
+  ["app-border", "app-bg", 3],
 ];
 
 describe.each([

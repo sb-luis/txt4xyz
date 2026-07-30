@@ -8,6 +8,7 @@ import { usePythonRunner } from "@/lib/python/usePythonRunner";
 import { resolveEditorRoomId } from "@/lib/collab/room";
 import { useRoom } from "@/lib/collab/useRoom";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
+import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
 
 export function AppShell() {
   const { status, output, run, stop, clearOutput } = usePythonRunner();
@@ -30,10 +31,22 @@ export function AppShell() {
   }, []);
 
   const handleRun = useCallback(() => {
+    if (status !== "ready") return;
     clearOutput();
     run(codeRef.current);
     setOutputCollapsed(false);
-  }, [clearOutput, run]);
+  }, [status, clearOutput, run]);
+
+  const handleStop = useCallback(() => {
+    if (status !== "running") return;
+    stop();
+  }, [status, stop]);
+
+  const handleToggleOutput = useCallback(() => {
+    setOutputCollapsed((prev) => !prev);
+  }, []);
+
+  useGlobalShortcuts({ onRun: handleRun, onStop: handleStop, onToggleOutput: handleToggleOutput });
 
   return (
     <ThemeProvider>
@@ -41,13 +54,13 @@ export function AppShell() {
         <AppHeader
           status={status}
           onRun={handleRun}
-          onStop={stop}
+          onStop={handleStop}
           room={{ status: roomStatus, rejectedCode, participants }}
         />
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg px-3 py-0">
           <Workspace
             outputCollapsed={outputCollapsed}
-            onToggleOutput={() => setOutputCollapsed((prev) => !prev)}
+            onToggleOutput={handleToggleOutput}
             editor={
               ytext === null ? null : (
                 <CodeEditor

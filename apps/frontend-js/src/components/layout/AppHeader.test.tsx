@@ -62,4 +62,19 @@ describe("AppHeader", () => {
     );
     expect(screen.getByRole("button", { name: /^room:/ })).toBeTruthy();
   });
+
+  it("opens the settings modal, which shows shortcuts and a theme switcher", () => {
+    render(
+      withTheme(
+        <AppHeader status="ready" onRun={vi.fn()} onStop={vi.fn()} room={DISCONNECTED_ROOM} />,
+      ),
+    );
+
+    expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "open settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
+    expect(screen.getByText("Run code")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /switch to (dark|light) mode/ })).toBeTruthy();
+  });
 });
