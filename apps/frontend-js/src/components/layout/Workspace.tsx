@@ -27,7 +27,7 @@ export function Workspace({ editor, output, outputCollapsed, onToggleOutput }: W
             editor
           </h2>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto p-4">{editor}</div>
+        <div className="min-h-0 flex-1 overflow-auto">{editor}</div>
 
         <CollapseExpandToggle collapsed={outputCollapsed} onToggle={onToggleOutput} />
       </section>
