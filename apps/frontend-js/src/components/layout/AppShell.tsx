@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CodeEditor, MAX_DOC_LENGTH } from "@/components/editor/CodeEditor";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { Pane } from "@/components/layout/Pane";
 import { StatusBar } from "@/components/layout/StatusBar";
+import { Workspace } from "@/components/layout/Workspace";
 import { OutputPane } from "@/components/output/OutputPane";
 import { usePythonRunner } from "@/lib/python/usePythonRunner";
 import { resolveEditorRoomId } from "@/lib/collab/room";
@@ -13,6 +13,7 @@ export function AppShell() {
   const { status, output, run, stop, clearOutput } = usePythonRunner();
   const [roomId, setRoomId] = useState(() => resolveEditorRoomId());
   const [docLength, setDocLength] = useState(0);
+  const [outputCollapsed, setOutputCollapsed] = useState(false);
   const codeRef = useRef("");
   const { ytext, awareness, status: roomStatus, rejectedCode, participants } = useRoom(roomId);
 
@@ -42,24 +43,26 @@ export function AppShell() {
           onStop={stop}
           room={{ status: roomStatus, rejectedCode, participants }}
         />
-        <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-app-bg px-3 py-0 md:flex-row">
-          <Pane title="editor">
-            {ytext === null ? null : (
-              <CodeEditor
-                key={roomId}
-                initialDoc=""
-                ytext={ytext}
-                awareness={awareness}
-                onChange={(doc) => {
-                  codeRef.current = doc;
-                  setDocLength(doc.length);
-                }}
-              />
-            )}
-          </Pane>
-          <Pane title="output">
-            <OutputPane status={status} output={output} />
-          </Pane>
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg px-3 py-0">
+          <Workspace
+            outputCollapsed={outputCollapsed}
+            onToggleOutput={() => setOutputCollapsed((prev) => !prev)}
+            editor={
+              ytext === null ? null : (
+                <CodeEditor
+                  key={roomId}
+                  initialDoc=""
+                  ytext={ytext}
+                  awareness={awareness}
+                  onChange={(doc) => {
+                    codeRef.current = doc;
+                    setDocLength(doc.length);
+                  }}
+                />
+              )
+            }
+            output={<OutputPane status={status} output={output} />}
+          />
         </main>
         <StatusBar runtimeStatus={status} docLength={docLength} maxDocLength={MAX_DOC_LENGTH} />
       </div>

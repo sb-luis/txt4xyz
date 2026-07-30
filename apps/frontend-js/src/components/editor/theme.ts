@@ -27,6 +27,11 @@ export const editorTheme = EditorView.theme(
       color: "var(--color-app-muted)",
       border: "none",
     },
+    ".cm-lineNumbers .cm-gutterElement": {
+      padding: "0 10px 0 0",
+      margin: "0",
+      minWidth: "0",
+    },
     ".cm-activeLine": {
       backgroundColor: "var(--editor-active-line)",
     },
