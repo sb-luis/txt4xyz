@@ -32,54 +32,66 @@ export function OutputPane({ status, output }: OutputPaneProps) {
 
   return (
     <div className="whitespace-pre-wrap break-words font-mono text-sm">
-      {output.map((entry, index) => {
-        if (entry.kind === "dataframe") {
-          return (
-            <div key={index} className="py-1">
-              <DataFrameTable
-                columns={entry.columns}
-                rows={entry.rows}
-                rowCount={entry.rowCount}
-                truncated={entry.truncated}
-              />
-            </div>
-          );
-        }
-        if (entry.kind === "plot") {
-          return (
-            <div key={index} className="py-1">
-              <PlotView svg={entry.svg} />
-            </div>
-          );
-        }
-        if (entry.kind === "html") {
-          return (
-            <div key={index} className="py-1">
-              <HtmlView html={entry.html} />
-            </div>
-          );
-        }
-        if (entry.kind === "image") {
-          return (
-            <div key={index} className="py-1">
-              <ImageView mime={entry.mime} dataBase64={entry.dataBase64} />
-            </div>
-          );
-        }
-        if (entry.kind === "json") {
-          return (
-            <div key={index} className="py-1">
-              <JsonView value={entry.value} />
-            </div>
-          );
-        }
-        return (
-          <div key={index} className={entry.kind === "stdout" ? "text-app-fg" : "text-app-error"}>
-            {entry.kind === "traceback" ? entry.text : entry.line}
-          </div>
-        );
-      })}
+      {output.map((entry, index) => renderEntry(entry, index))}
       <div ref={endRef} />
     </div>
   );
+}
+
+function renderEntry(entry: OutputEntry, key: number) {
+  switch (entry.kind) {
+    case "dataframe":
+      return (
+        <div key={key} className="py-1">
+          <DataFrameTable
+            columns={entry.columns}
+            rows={entry.rows}
+            rowCount={entry.rowCount}
+            truncated={entry.truncated}
+          />
+        </div>
+      );
+    case "plot":
+      return (
+        <div key={key} className="py-1">
+          <PlotView svg={entry.svg} />
+        </div>
+      );
+    case "html":
+      return (
+        <div key={key} className="py-1">
+          <HtmlView html={entry.html} />
+        </div>
+      );
+    case "image":
+      return (
+        <div key={key} className="py-1">
+          <ImageView mime={entry.mime} dataBase64={entry.dataBase64} />
+        </div>
+      );
+    case "json":
+      return (
+        <div key={key} className="py-1">
+          <JsonView value={entry.value} />
+        </div>
+      );
+    case "traceback":
+      return (
+        <div key={key} className="text-app-error">
+          {entry.text}
+        </div>
+      );
+    case "stdout":
+      return (
+        <div key={key} className="text-app-fg">
+          {entry.line}
+        </div>
+      );
+    case "stderr":
+      return (
+        <div key={key} className="text-app-error">
+          {entry.line}
+        </div>
+      );
+  }
 }
