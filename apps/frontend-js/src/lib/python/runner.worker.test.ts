@@ -97,4 +97,57 @@ describe("run", () => {
       id: "4",
     });
   }, 20_000);
+
+  it("falls back to print(repr(obj)) instead of emitting a display message when pandas isn't imported", async () => {
+    const postMessage = self.postMessage as unknown as ReturnType<typeof vi.fn>;
+    postMessage.mockClear();
+
+    await run(pyodide, "5", "display(42)");
+    const calls = postMessage.mock.calls.map((call) => call[0]);
+
+    expect(calls).toContainEqual({ type: "run-result", id: "5" });
+    expect(calls.some((call) => (call as { type: string }).type === "display")).toBe(false);
+  }, 20_000);
+
+  it("emits a display message with camelCase fields via the JSON display bridge", async () => {
+    const postMessage = self.postMessage as unknown as ReturnType<typeof vi.fn>;
+    postMessage.mockClear();
+
+    await run(
+      pyodide,
+      "6",
+      [
+        "import json",
+        "_emit_display(json.dumps({",
+        "    'kind': 'dataframe',",
+        "    'columns': ['a'],",
+        "    'rows': [['1']],",
+        "    'row_count': 600,",
+        "    'truncated': True,",
+        "}))",
+      ].join("\n"),
+    );
+
+    const calls = postMessage.mock.calls.map((call) => call[0]);
+    expect(calls).toContainEqual({
+      type: "display",
+      id: "6",
+      display: {
+        kind: "dataframe",
+        columns: ["a"],
+        rows: [["1"]],
+        rowCount: 600,
+        truncated: true,
+      },
+    });
+  }, 20_000);
+
+  it("does not attempt matplotlib capture when matplotlib was never imported", async () => {
+    const postMessage = self.postMessage as unknown as ReturnType<typeof vi.fn>;
+    postMessage.mockClear();
+
+    await run(pyodide, "7", "x = 1");
+    const calls = postMessage.mock.calls.map((call) => call[0]);
+    expect(calls).toEqual([{ type: "run-result", id: "7" }]);
+  }, 20_000);
 });

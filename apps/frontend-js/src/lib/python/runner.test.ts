@@ -96,6 +96,118 @@ describe("PythonRunnerClient", () => {
     expect(statuses.at(-1)).toBe("ready");
   });
 
+  it("maps a dataframe display message to a dataframe output entry", () => {
+    const { client, output } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    client.run("display(df)");
+    const posted = worker.posted[0] as { id: string };
+
+    worker.emit({
+      type: "display",
+      id: posted.id,
+      display: {
+        kind: "dataframe",
+        columns: ["a"],
+        rows: [["1"]],
+        rowCount: 600,
+        truncated: true,
+      },
+    });
+
+    expect(output).toEqual([
+      { kind: "dataframe", columns: ["a"], rows: [["1"]], rowCount: 600, truncated: true },
+    ]);
+  });
+
+  it("maps a plot display message to a plot output entry", () => {
+    const { client, output } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    client.run("plt.plot([1])");
+    const posted = worker.posted[0] as { id: string };
+
+    worker.emit({
+      type: "display",
+      id: posted.id,
+      display: { kind: "plot", svg: "<svg></svg>" },
+    });
+
+    expect(output).toEqual([{ kind: "plot", svg: "<svg></svg>" }]);
+  });
+
+  it("maps an html display message to an html output entry", () => {
+    const { client, output } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    client.run("display(obj)");
+    const posted = worker.posted[0] as { id: string };
+
+    worker.emit({
+      type: "display",
+      id: posted.id,
+      display: { kind: "html", html: "<h1>hi</h1>" },
+    });
+
+    expect(output).toEqual([{ kind: "html", html: "<h1>hi</h1>" }]);
+  });
+
+  it("maps an image display message to an image output entry", () => {
+    const { client, output } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    client.run("display(obj)");
+    const posted = worker.posted[0] as { id: string };
+
+    worker.emit({
+      type: "display",
+      id: posted.id,
+      display: { kind: "image", mime: "image/png", dataBase64: "AAAA" },
+    });
+
+    expect(output).toEqual([{ kind: "image", mime: "image/png", dataBase64: "AAAA" }]);
+  });
+
+  it("maps a json display message to a json output entry", () => {
+    const { client, output } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    client.run("display(obj)");
+    const posted = worker.posted[0] as { id: string };
+
+    worker.emit({
+      type: "display",
+      id: posted.id,
+      display: { kind: "json", value: { a: 1 } },
+    });
+
+    expect(output).toEqual([{ kind: "json", value: { a: 1 } }]);
+  });
+
+  it("discards a display message carrying a stale run id", () => {
+    const { client, output } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    client.run("display(1)");
+    const staleId = (worker.posted[0] as { id: string }).id;
+    worker.emit({ type: "run-result", id: staleId });
+
+    client.run("display(2)");
+
+    worker.emit({
+      type: "display",
+      id: staleId,
+      display: { kind: "plot", svg: "<svg></svg>" },
+    });
+    expect(output).toEqual([]);
+  });
+
   it("moves to error status on init-failure", () => {
     const { statuses } = makeClient();
     FakeWorker.latest().emit({ type: "init-failure", message: "boom" });

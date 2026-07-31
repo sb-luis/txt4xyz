@@ -42,6 +42,50 @@ export const initFailureMessageSchema = z.object({
   message: z.string(),
 });
 
+export const dataframeDisplaySchema = z.object({
+  kind: z.literal("dataframe"),
+  columns: z.array(z.string()),
+  rows: z.array(z.array(z.string())),
+  rowCount: z.number(),
+  truncated: z.boolean(),
+});
+
+export const plotDisplaySchema = z.object({
+  kind: z.literal("plot"),
+  svg: z.string(),
+});
+
+export const htmlDisplaySchema = z.object({
+  kind: z.literal("html"),
+  html: z.string(),
+});
+
+export const imageDisplaySchema = z.object({
+  kind: z.literal("image"),
+  mime: z.string(),
+  dataBase64: z.string(),
+});
+
+export const jsonDisplaySchema = z.object({
+  kind: z.literal("json"),
+  value: z.unknown(),
+});
+
+export const displayPayloadSchema = z.discriminatedUnion("kind", [
+  dataframeDisplaySchema,
+  plotDisplaySchema,
+  htmlDisplaySchema,
+  imageDisplaySchema,
+  jsonDisplaySchema,
+]);
+export type DisplayPayload = z.infer<typeof displayPayloadSchema>;
+
+export const displayMessageSchema = z.object({
+  type: z.literal("display"),
+  id: z.string(),
+  display: displayPayloadSchema,
+});
+
 export const workerToMainMessageSchema = z.discriminatedUnion("type", [
   readyMessageSchema,
   stdoutMessageSchema,
@@ -49,6 +93,7 @@ export const workerToMainMessageSchema = z.discriminatedUnion("type", [
   runResultMessageSchema,
   runErrorMessageSchema,
   initFailureMessageSchema,
+  displayMessageSchema,
 ]);
 export type WorkerToMainMessage = z.infer<typeof workerToMainMessageSchema>;
 

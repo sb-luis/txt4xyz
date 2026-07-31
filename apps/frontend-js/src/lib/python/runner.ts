@@ -5,7 +5,12 @@ export type RunnerStatus = "loading" | "ready" | "running" | "error";
 export type OutputEntry =
   | { kind: "stdout"; line: string }
   | { kind: "stderr"; line: string }
-  | { kind: "traceback"; text: string };
+  | { kind: "traceback"; text: string }
+  | { kind: "dataframe"; columns: string[]; rows: string[][]; rowCount: number; truncated: boolean }
+  | { kind: "plot"; svg: string }
+  | { kind: "html"; html: string }
+  | { kind: "image"; mime: string; dataBase64: string }
+  | { kind: "json"; value: unknown };
 
 export interface PythonRunnerCallbacks {
   onStatusChange: (status: RunnerStatus) => void;
@@ -62,6 +67,34 @@ export class PythonRunnerClient {
         if (message.id !== this.currentRunId) return;
         this.callbacks.onOutput({ kind: "stderr", line: message.line });
         return;
+      case "display": {
+        if (message.id !== this.currentRunId) return;
+        const display = message.display;
+        switch (display.kind) {
+          case "dataframe":
+            this.callbacks.onOutput({
+              kind: "dataframe",
+              columns: display.columns,
+              rows: display.rows,
+              rowCount: display.rowCount,
+              truncated: display.truncated,
+            });
+            break;
+          case "plot":
+            this.callbacks.onOutput({ kind: "plot", svg: display.svg });
+            break;
+          case "html":
+            this.callbacks.onOutput({ kind: "html", html: display.html });
+            break;
+          case "image":
+            this.callbacks.onOutput({ kind: "image", mime: display.mime, dataBase64: display.dataBase64 });
+            break;
+          case "json":
+            this.callbacks.onOutput({ kind: "json", value: display.value });
+            break;
+        }
+        return;
+      }
       case "run-result":
         if (message.id !== this.currentRunId) return;
         this.currentRunId = null;

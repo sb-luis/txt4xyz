@@ -71,4 +71,91 @@ describe("parseWorkerToMainMessage", () => {
       parseWorkerToMainMessage({ type: "bogus" }),
     ).toThrow();
   });
+
+  it("accepts a dataframe display message", () => {
+    const message = parseWorkerToMainMessage({
+      type: "display",
+      id: "run-1",
+      display: {
+        kind: "dataframe",
+        columns: ["a", "b"],
+        rows: [["1", "2"]],
+        rowCount: 1,
+        truncated: false,
+      },
+    });
+    expect(message).toEqual({
+      type: "display",
+      id: "run-1",
+      display: {
+        kind: "dataframe",
+        columns: ["a", "b"],
+        rows: [["1", "2"]],
+        rowCount: 1,
+        truncated: false,
+      },
+    });
+  });
+
+  it("accepts a plot display message", () => {
+    const message = parseWorkerToMainMessage({
+      type: "display",
+      id: "run-1",
+      display: { kind: "plot", svg: "<svg></svg>" },
+    });
+    expect(message).toEqual({
+      type: "display",
+      id: "run-1",
+      display: { kind: "plot", svg: "<svg></svg>" },
+    });
+  });
+
+  it("accepts an html display message", () => {
+    const message = parseWorkerToMainMessage({
+      type: "display",
+      id: "run-1",
+      display: { kind: "html", html: "<h1>hi</h1>" },
+    });
+    expect(message).toEqual({
+      type: "display",
+      id: "run-1",
+      display: { kind: "html", html: "<h1>hi</h1>" },
+    });
+  });
+
+  it("accepts an image display message", () => {
+    const message = parseWorkerToMainMessage({
+      type: "display",
+      id: "run-1",
+      display: { kind: "image", mime: "image/png", dataBase64: "AAAA" },
+    });
+    expect(message).toEqual({
+      type: "display",
+      id: "run-1",
+      display: { kind: "image", mime: "image/png", dataBase64: "AAAA" },
+    });
+  });
+
+  it("accepts a json display message", () => {
+    const message = parseWorkerToMainMessage({
+      type: "display",
+      id: "run-1",
+      display: { kind: "json", value: { a: 1 } },
+    });
+    expect(message).toEqual({
+      type: "display",
+      id: "run-1",
+      display: { kind: "json", value: { a: 1 } },
+    });
+  });
+
+  it("rejects a display message with an unrecognized display kind", () => {
+    expect(() =>
+      parseWorkerToMainMessage({
+        type: "display",
+        id: "run-1",
+        display: { kind: "bogus" },
+      }),
+    ).toThrow();
+  });
 });
