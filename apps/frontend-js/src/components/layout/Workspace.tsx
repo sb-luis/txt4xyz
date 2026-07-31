@@ -46,6 +46,7 @@ export function Workspace({ editor, output, layout, onLayoutChange }: WorkspaceP
   // skip re-animating a transition the user's own drag already completed.
   const skipNextAnimationRef = useRef(false);
   const didMountRef = useRef(false);
+  const lastSplitSizesRef = useRef({ editor: 60, output: 40 });
 
   // Drives collapse from the layout switcher (toggle group / keyboard
   // shortcut) rather than the drag gesture — react-resizable-panels handles
@@ -55,14 +56,15 @@ export function Workspace({ editor, output, layout, onLayoutChange }: WorkspaceP
 
     const applyLayout = () => {
       if (layout === "editor") {
-        outputPanel.collapse();
-        if (editorPanel.isCollapsed()) editorPanel.expand();
+        editorPanel.resize("100%");
+        outputPanel.resize("0%");
       } else if (layout === "output") {
-        editorPanel.collapse();
-        if (outputPanel.isCollapsed()) outputPanel.expand();
+        editorPanel.resize("0%");
+        outputPanel.resize("100%");
       } else {
-        if (editorPanel.isCollapsed()) editorPanel.expand();
-        if (outputPanel.isCollapsed()) outputPanel.expand();
+        const { editor, output } = lastSplitSizesRef.current;
+        editorPanel.resize(`${editor}%`);
+        outputPanel.resize(`${output}%`);
       }
     };
 
@@ -99,6 +101,9 @@ export function Workspace({ editor, output, layout, onLayoutChange }: WorkspaceP
       const outputSize = nextLayout.output ?? 0;
       const next: WorkspaceLayout =
         editorSize === 0 ? "output" : outputSize === 0 ? "editor" : "split";
+      if (next === "split") {
+        lastSplitSizesRef.current = { editor: editorSize, output: outputSize };
+      }
       if (next === layout) return;
       skipNextAnimationRef.current = true;
       onLayoutChange(next);
