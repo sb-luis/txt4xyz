@@ -118,7 +118,7 @@ export function Workspace({ editor, output, layout, onLayoutChange }: WorkspaceP
       <ResizablePanel
         id="editor"
         defaultSize={60}
-        minSize={20}
+        minSize={100}
         collapsible
         collapsedSize={0}
         panelRef={setEditorPanel}
@@ -143,7 +143,7 @@ export function Workspace({ editor, output, layout, onLayoutChange }: WorkspaceP
       <ResizablePanel
         id="output"
         defaultSize={40}
-        minSize={20}
+        minSize={100}
         collapsible
         collapsedSize={0}
         panelRef={setOutputPanel}
