@@ -1,5 +1,4 @@
 import { HighlightStyle } from "@codemirror/language";
-import { Prec } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
