@@ -99,6 +99,7 @@ function AppShellInner() {
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background px-3 py-0">
         <Workspace
           layout={workspaceLayout}
+          onLayoutChange={setWorkspaceLayout}
           editor={
             ytext === null ? null : (
               <CodeEditor

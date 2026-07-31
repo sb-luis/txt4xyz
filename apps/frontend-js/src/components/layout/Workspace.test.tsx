@@ -5,7 +5,12 @@ import { Workspace } from "@/components/layout/Workspace";
 describe("Workspace", () => {
   it("renders the editor and output regions in split layout", () => {
     render(
-      <Workspace editor={<p>editor content</p>} output={<p>output content</p>} layout="split" />,
+      <Workspace
+        editor={<p>editor content</p>}
+        output={<p>output content</p>}
+        layout="split"
+        onLayoutChange={() => {}}
+      />,
     );
     expect(screen.getByRole("region", { name: "editor" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "output" })).toBeTruthy();
@@ -14,7 +19,12 @@ describe("Workspace", () => {
 
   it("hides the output region from the accessibility tree in full-editor layout", () => {
     render(
-      <Workspace editor={<p>editor content</p>} output={<p>output content</p>} layout="editor" />,
+      <Workspace
+        editor={<p>editor content</p>}
+        output={<p>output content</p>}
+        layout="editor"
+        onLayoutChange={() => {}}
+      />,
     );
     expect(screen.queryByRole("region", { name: "output" })).toBeNull();
     expect(screen.getByRole("region", { name: "editor" })).toBeTruthy();
@@ -22,7 +32,12 @@ describe("Workspace", () => {
 
   it("hides the editor region from the accessibility tree in full-output layout", () => {
     render(
-      <Workspace editor={<p>editor content</p>} output={<p>output content</p>} layout="output" />,
+      <Workspace
+        editor={<p>editor content</p>}
+        output={<p>output content</p>}
+        layout="output"
+        onLayoutChange={() => {}}
+      />,
     );
     expect(screen.queryByRole("region", { name: "editor" })).toBeNull();
     expect(screen.getByRole("region", { name: "output" })).toBeTruthy();
