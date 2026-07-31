@@ -4,8 +4,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { CardHeader } from "@/components/ui/card";
-import { SectionLabel } from "@/components/ui/section-label";
 import { usePanelCallbackRef } from "react-resizable-panels";
 import type { WorkspaceLayout } from "@/lib/workspace/layout";
 
@@ -75,11 +73,9 @@ export function Workspace({ editor, output, layout }: WorkspaceProps) {
           inert={editorCollapsed}
           className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
         >
-          <CardHeader className="shrink-0 gap-0 border-b border-border px-4 py-2">
-            <SectionLabel as="h2" className="font-mono">
-              editor
-            </SectionLabel>
-          </CardHeader>
+          <div className="shrink-0 border-b border-border px-4 py-2 text-sm font-medium">
+            Editor
+          </div>
           <div className="min-h-0 flex-1 overflow-auto">{editor}</div>
         </section>
       </ResizablePanel>
@@ -102,11 +98,9 @@ export function Workspace({ editor, output, layout }: WorkspaceProps) {
           inert={outputCollapsed}
           className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
         >
-          <CardHeader className="shrink-0 gap-0 border-b border-border px-4 py-2">
-            <SectionLabel as="h2" className="font-mono">
-              output
-            </SectionLabel>
-          </CardHeader>
+          <div className="shrink-0 border-b border-border px-4 py-2 text-sm font-medium">
+            Output
+          </div>
           <div className="min-h-0 flex-1 overflow-auto p-4">{output}</div>
         </section>
       </ResizablePanel>

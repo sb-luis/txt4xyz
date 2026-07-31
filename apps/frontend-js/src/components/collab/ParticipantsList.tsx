@@ -6,20 +6,14 @@ import {
 } from "@/lib/collab/provider";
 import type { Participant } from "@/lib/collab/useRoom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+} from "@/components/ui/avatar";
 
 const MAX_VISIBLE_AVATARS = 3;
-
-const AVATAR_CLASS =
-  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-medium";
-
-// Purely decorative and purely local: which of the two alternating surface
-// tones an avatar gets depends only on its position in this client's visible
-// list, never on anything synced through awareness. Two peers can (and will)
-// render the same participant in different tones.
-const AVATAR_TONE_CLASS = [
-  "bg-card text-card-foreground",
-  "bg-secondary text-secondary-foreground",
-];
 
 const ROOM_STATUS_LABEL: Record<ConnectionStatus, string> = {
   connecting: "connecting…",
@@ -75,28 +69,23 @@ export function ParticipantsList({ room }: ParticipantsListProps) {
         className="flex cursor-pointer items-center"
       >
         {connected ? (
-          <span className="flex items-center -space-x-2">
-            {visible.map((participant, index) => (
-              <span
-                key={participant.clientId}
-                className={`${AVATAR_CLASS} ${AVATAR_TONE_CLASS[index % AVATAR_TONE_CLASS.length]}`}
-              >
-                {participant.name.slice(0, 1).toUpperCase()}
-              </span>
+          <AvatarGroup>
+            {visible.map((participant) => (
+              <Avatar key={participant.clientId} size="sm">
+                <AvatarFallback>
+                  {participant.name.slice(0, 1).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
             ))}
             {hiddenCount > 0 && (
-              <span
-                className={`${AVATAR_CLASS} ${AVATAR_TONE_CLASS[visible.length % AVATAR_TONE_CLASS.length]}`}
-              >
-                +{hiddenCount}
-              </span>
+              <AvatarGroupCount className="size-6 text-xs">+{hiddenCount}</AvatarGroupCount>
             )}
-          </span>
+          </AvatarGroup>
         ) : (
           <ConnectingIndicator />
         )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto font-mono text-xs">
+      <PopoverContent align="start" className="w-auto text-sm">
         {connected ? (
           <ul aria-label="participants" className="flex flex-col gap-1">
             {participants.map((participant) => (
@@ -104,7 +93,7 @@ export function ParticipantsList({ room }: ParticipantsListProps) {
             ))}
           </ul>
         ) : (
-          <p className="text-card-foreground/70">{label}</p>
+          <p className="text-muted-foreground">{label}</p>
         )}
       </PopoverContent>
     </Popover>

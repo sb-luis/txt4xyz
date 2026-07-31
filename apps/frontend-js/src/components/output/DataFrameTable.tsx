@@ -62,7 +62,7 @@ export function DataFrameTable({ columns, rows, rowCount, truncated }: DataFrame
         </table>
       </div>
       {truncated ? (
-        <p className="border-t border-border px-2 py-1 text-xs text-foreground/70">
+        <p className="border-t border-border px-2 py-1 text-xs text-muted-foreground">
           showing first {rows.length} of {rowCount} rows
         </p>
       ) : null}

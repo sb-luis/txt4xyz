@@ -30,9 +30,7 @@ export function AppHeader({
 
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 px-4 py-2">
-      <span className="font-mono text-lg font-semibold text-foreground">
-        txt4xyz
-      </span>
+      <span className="text-lg font-semibold text-foreground">txt4xyz</span>
       <ToggleGroup
         type="single"
         variant="outline"

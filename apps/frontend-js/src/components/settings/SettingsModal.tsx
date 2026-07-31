@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/dialog";
 import { AliasField } from "@/components/settings/AliasField";
 import { ShortcutList } from "@/components/settings/ShortcutList";
-import { SectionLabel, sectionLabelClassName } from "@/components/ui/section-label";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { useVimMode } from "@/lib/vim/VimModeContext";
@@ -21,26 +21,27 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-w-sm font-mono">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className={sectionLabelClassName}>Settings</DialogTitle>
+          <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 text-sm">
           <section className="flex items-center justify-between gap-4">
-            <SectionLabel>Alias</SectionLabel>
-            <AliasField />
+            <Label htmlFor="alias-input">Alias</Label>
+            <AliasField id="alias-input" />
           </section>
           <section>
-            <SectionLabel className="mb-1.5">Shortcuts</SectionLabel>
+            <Label className="mb-3">Shortcuts</Label>
             <ShortcutList />
           </section>
           <section className="flex items-center justify-between gap-4">
-            <SectionLabel>Theme</SectionLabel>
+            <Label>Theme</Label>
             <ThemeSwitcher />
           </section>
           <section className="flex items-center justify-between gap-4">
-            <SectionLabel>Vim keybindings</SectionLabel>
+            <Label htmlFor="vim-mode-switch">Vim keybindings</Label>
             <Switch
+              id="vim-mode-switch"
               checked={vimMode}
               onCheckedChange={toggleVimMode}
               aria-label="toggle vim keybindings"

@@ -3,7 +3,11 @@ import { Input } from "@/components/ui/input";
 import { useAlias } from "@/lib/alias/AliasContext";
 import { MAX_ALIAS_LENGTH, isValidAlias } from "@/lib/alias/alias";
 
-export function AliasField() {
+export interface AliasFieldProps {
+  id?: string;
+}
+
+export function AliasField({ id }: AliasFieldProps) {
   const { alias, setAlias } = useAlias();
   const [draft, setDraft] = useState(alias ?? "");
   const invalid = draft.length > 0 && !isValidAlias(draft);
@@ -11,6 +15,7 @@ export function AliasField() {
   return (
     <div className="flex flex-col items-end gap-1">
       <Input
+        id={id}
         value={draft}
         onChange={(event) => {
           const next = event.target.value;
