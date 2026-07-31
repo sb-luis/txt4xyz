@@ -78,6 +78,7 @@ describe("parseWorkerToMainMessage", () => {
       id: "run-1",
       display: {
         kind: "dataframe",
+        handle: "h1",
         columns: ["a", "b"],
         rows: [["1", "2"]],
         rowCount: 1,
@@ -89,6 +90,7 @@ describe("parseWorkerToMainMessage", () => {
       id: "run-1",
       display: {
         kind: "dataframe",
+        handle: "h1",
         columns: ["a", "b"],
         rows: [["1", "2"]],
         rowCount: 1,

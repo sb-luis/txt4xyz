@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import type { OutputEntry, RunnerStatus } from "@/lib/python/runner";
+import type { DataframeSort } from "@/lib/python/protocol";
+import type { DataframePage, OutputEntry, RunnerStatus } from "@/lib/python/runner";
 import { DataFrameTable } from "./DataFrameTable";
 import { PlotView } from "./PlotView";
 import { HtmlView } from "./HtmlView";
@@ -9,9 +10,15 @@ import { JsonView } from "./JsonView";
 export interface OutputPaneProps {
   status: RunnerStatus;
   output: OutputEntry[];
+  fetchDataframePage: (
+    handle: string,
+    offset: number,
+    limit: number,
+    sort: DataframeSort | null,
+  ) => Promise<DataframePage>;
 }
 
-export function OutputPane({ status, output }: OutputPaneProps) {
+export function OutputPane({ status, output, fetchDataframePage }: OutputPaneProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -32,13 +39,17 @@ export function OutputPane({ status, output }: OutputPaneProps) {
 
   return (
     <div className="whitespace-pre-wrap break-words font-mono text-sm">
-      {output.map((entry, index) => renderEntry(entry, index))}
+      {output.map((entry, index) => renderEntry(entry, index, fetchDataframePage))}
       <div ref={endRef} />
     </div>
   );
 }
 
-function renderEntry(entry: OutputEntry, key: number) {
+function renderEntry(
+  entry: OutputEntry,
+  key: number,
+  fetchDataframePage: OutputPaneProps["fetchDataframePage"],
+) {
   switch (entry.kind) {
     case "dataframe":
       return (
@@ -47,7 +58,9 @@ function renderEntry(entry: OutputEntry, key: number) {
             columns={entry.columns}
             rows={entry.rows}
             rowCount={entry.rowCount}
-            truncated={entry.truncated}
+            fetchPage={(offset, limit, sort) =>
+              fetchDataframePage(entry.handle, offset, limit, sort)
+            }
           />
         </div>
       );

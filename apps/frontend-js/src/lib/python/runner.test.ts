@@ -109,6 +109,7 @@ describe("PythonRunnerClient", () => {
       id: posted.id,
       display: {
         kind: "dataframe",
+        handle: "h1",
         columns: ["a"],
         rows: [["1"]],
         rowCount: 600,
@@ -117,7 +118,14 @@ describe("PythonRunnerClient", () => {
     });
 
     expect(output).toEqual([
-      { kind: "dataframe", columns: ["a"], rows: [["1"]], rowCount: 600, truncated: true },
+      {
+        kind: "dataframe",
+        handle: "h1",
+        columns: ["a"],
+        rows: [["1"]],
+        rowCount: 600,
+        truncated: true,
+      },
     ]);
   });
 
@@ -275,5 +283,49 @@ describe("PythonRunnerClient", () => {
 
     worker.emit({ type: "ready" });
     expect(statuses).toEqual(["loading"]);
+  });
+
+  it("fetchDataframePage posts a dataframe-page request and resolves on its result", async () => {
+    const { client } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    const promise = client.fetchDataframePage("h1", 10, 5, { columnIndex: 0, direction: "asc" });
+    const posted = worker.posted[0] as { type: string; id: string; handle: string };
+    expect(posted.type).toBe("dataframe-page");
+    expect(posted.handle).toBe("h1");
+
+    worker.emit({
+      type: "dataframe-page-result",
+      id: posted.id,
+      rows: [["1"]],
+      rowCount: 20,
+    });
+
+    await expect(promise).resolves.toEqual({ rows: [["1"]], rowCount: 20 });
+  });
+
+  it("fetchDataframePage rejects on a dataframe-page-error", async () => {
+    const { client } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    const promise = client.fetchDataframePage("h1", 0, 5, null);
+    const posted = worker.posted[0] as { id: string };
+
+    worker.emit({ type: "dataframe-page-error", id: posted.id, message: "expired" });
+
+    await expect(promise).rejects.toThrow("expired");
+  });
+
+  it("rejects pending page requests when stop() or dispose() terminate the worker", async () => {
+    const { client } = makeClient();
+    const worker = FakeWorker.latest();
+    worker.emit({ type: "ready" });
+
+    const promise = client.fetchDataframePage("h1", 0, 5, null);
+    client.stop();
+
+    await expect(promise).rejects.toThrow("runner stopped");
   });
 });

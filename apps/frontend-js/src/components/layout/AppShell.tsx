@@ -14,7 +14,7 @@ import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
 import { nextWorkspaceLayout, type WorkspaceLayout } from "@/lib/workspace/layout";
 
 function AppShellInner() {
-  const { status, output, run, stop, clearOutput } = usePythonRunner();
+  const { status, output, run, stop, clearOutput, fetchDataframePage } = usePythonRunner();
   const [roomId, setRoomId] = useState(() => resolveEditorRoomId());
   const [docLength, setDocLength] = useState(0);
   const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>("split");
@@ -115,7 +115,9 @@ function AppShellInner() {
               />
             )
           }
-          output={<OutputPane status={status} output={output} />}
+          output={
+            <OutputPane status={status} output={output} fetchDataframePage={fetchDataframePage} />
+          }
         />
       </main>
       <StatusBar runtimeStatus={status} docLength={docLength} maxDocLength={MAX_DOC_LENGTH} />

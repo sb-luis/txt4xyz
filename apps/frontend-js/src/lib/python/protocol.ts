@@ -7,7 +7,26 @@ export const runRequestSchema = z.object({
 });
 export type RunRequest = z.infer<typeof runRequestSchema>;
 
-export const mainToWorkerMessageSchema = runRequestSchema;
+export const dataframeSortSchema = z.object({
+  columnIndex: z.number(),
+  direction: z.enum(["asc", "desc"]),
+});
+export type DataframeSort = z.infer<typeof dataframeSortSchema>;
+
+export const dataframePageRequestSchema = z.object({
+  type: z.literal("dataframe-page"),
+  id: z.string(),
+  handle: z.string(),
+  offset: z.number(),
+  limit: z.number(),
+  sort: dataframeSortSchema.nullable(),
+});
+export type DataframePageRequest = z.infer<typeof dataframePageRequestSchema>;
+
+export const mainToWorkerMessageSchema = z.discriminatedUnion("type", [
+  runRequestSchema,
+  dataframePageRequestSchema,
+]);
 export type MainToWorkerMessage = z.infer<typeof mainToWorkerMessageSchema>;
 
 export const readyMessageSchema = z.object({
@@ -44,6 +63,7 @@ export const initFailureMessageSchema = z.object({
 
 export const dataframeDisplaySchema = z.object({
   kind: z.literal("dataframe"),
+  handle: z.string(),
   columns: z.array(z.string()),
   rows: z.array(z.array(z.string().nullable())),
   rowCount: z.number(),
@@ -86,6 +106,19 @@ export const displayMessageSchema = z.object({
   display: displayPayloadSchema,
 });
 
+export const dataframePageResultSchema = z.object({
+  type: z.literal("dataframe-page-result"),
+  id: z.string(),
+  rows: z.array(z.array(z.string().nullable())),
+  rowCount: z.number(),
+});
+
+export const dataframePageErrorSchema = z.object({
+  type: z.literal("dataframe-page-error"),
+  id: z.string(),
+  message: z.string(),
+});
+
 export const workerToMainMessageSchema = z.discriminatedUnion("type", [
   readyMessageSchema,
   stdoutMessageSchema,
@@ -94,6 +127,8 @@ export const workerToMainMessageSchema = z.discriminatedUnion("type", [
   runErrorMessageSchema,
   initFailureMessageSchema,
   displayMessageSchema,
+  dataframePageResultSchema,
+  dataframePageErrorSchema,
 ]);
 export type WorkerToMainMessage = z.infer<typeof workerToMainMessageSchema>;
 

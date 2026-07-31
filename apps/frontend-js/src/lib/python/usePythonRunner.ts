@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PythonRunnerClient, type OutputEntry, type RunnerStatus } from "./runner";
+import {
+  PythonRunnerClient,
+  type DataframePage,
+  type OutputEntry,
+  type RunnerStatus,
+} from "./runner";
+import type { DataframeSort } from "./protocol";
 
 export interface UsePythonRunnerResult {
   status: RunnerStatus;
@@ -7,6 +13,12 @@ export interface UsePythonRunnerResult {
   run: (code: string) => void;
   stop: () => void;
   clearOutput: () => void;
+  fetchDataframePage: (
+    handle: string,
+    offset: number,
+    limit: number,
+    sort: DataframeSort | null,
+  ) => Promise<DataframePage>;
 }
 
 export function usePythonRunner(): UsePythonRunnerResult {
@@ -39,5 +51,14 @@ export function usePythonRunner(): UsePythonRunnerResult {
     setOutput([]);
   }, []);
 
-  return { status, output, run, stop, clearOutput };
+  const fetchDataframePage = useCallback(
+    (handle: string, offset: number, limit: number, sort: DataframeSort | null) => {
+      const client = clientRef.current;
+      if (!client) return Promise.reject(new Error("runner not ready"));
+      return client.fetchDataframePage(handle, offset, limit, sort);
+    },
+    [],
+  );
+
+  return { status, output, run, stop, clearOutput, fetchDataframePage };
 }

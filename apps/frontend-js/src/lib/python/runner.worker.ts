@@ -17,6 +17,38 @@ const INIT_MODULE = [
   "m.__dict__",
 ].join("\n");
 
+// Idempotent: run at the start of every run() against Pyodide's default
+// globals, not the per-run `ns` that gets destroyed after every run — this
+// is what lets a displayed dataframe stay pageable after its run has
+// finished. The registry itself is only reset if missing, so re-running
+// this doesn't clear dataframes registered by the run in progress.
+const PERSISTENT_SETUP = [
+  "if '_dataframe_registry' not in globals():",
+  "    _dataframe_registry = {}",
+  "",
+  // sort_column_index is -1 (not None) for "no sort" -- Pyodide's JS->Python
+  // conversion for a bare `null` argument doesn't reliably coerce to Python
+  // `None` across proxy call boundaries, so an int sentinel avoids the
+  // ambiguity rather than relying on an `is not None` check.
+  "def _fetch_dataframe_page(handle, offset, limit, sort_column_index, sort_direction):",
+  "    import json",
+  "    import pandas as pd",
+  "    df = _dataframe_registry.get(handle)",
+  "    if df is None:",
+  "        return json.dumps({'error': 'expired'})",
+  "    view = df",
+  "    if sort_column_index >= 0:",
+  "        column = view.columns[sort_column_index]",
+  "        view = view.sort_values(by=column, ascending=(sort_direction != 'desc'))",
+  "    row_count = len(view)",
+  "    page = view.iloc[offset:offset + limit]",
+  "    rows = [",
+  "        [None if pd.isna(v) else str(v) for v in row]",
+  "        for row in page.itertuples(index=False)",
+  "    ]",
+  "    return json.dumps({'rows': rows, 'row_count': row_count})",
+].join("\n");
+
 // Executed with `globals: ns` (see run()) so these defs land directly in the
 // run namespace and their closures resolve `_emit_display` from there too —
 // the same namespace user code runs in, so nothing has to be re-exported.
@@ -77,8 +109,10 @@ const DEFINE_DISPLAY_HELPERS = [
   "    _emit_display(json.dumps(payload))",
   "",
   "def _emit_dataframe(df):",
-  "    import json",
+  "    import json, uuid",
   "    import pandas as pd",
+  "    handle = str(uuid.uuid4())",
+  "    _dataframe_registry[handle] = df",
   "    row_count = len(df)",
   "    truncated = row_count > 500",
   "    view = df.head(500)",
@@ -91,6 +125,7 @@ const DEFINE_DISPLAY_HELPERS = [
   "    ]",
   "    payload = {",
   "        'kind': 'dataframe',",
+  "        'handle': handle,",
   "        'columns': [str(c) for c in view.columns],",
   "        'rows': rows,",
   "        'row_count': row_count,",
@@ -119,6 +154,7 @@ function toCamelDisplay(parsed: Record<string, unknown>): DisplayPayload {
   if (parsed.kind === "dataframe") {
     return {
       kind: "dataframe",
+      handle: parsed.handle as string,
       columns: parsed.columns as string[],
       rows: parsed.rows as string[][],
       rowCount: parsed.row_count as number,
@@ -171,8 +207,13 @@ async function init(): Promise<PyodideInterface> {
 
 export async function run(pyodide: PyodideInterface, id: string, code: string) {
   currentRunId = id;
+  pyodide.runPython(PERSISTENT_SETUP);
+  // Dataframes displayed by the previous run become unreachable the moment
+  // a new run starts -- their variables don't survive either.
+  pyodide.runPython("_dataframe_registry.clear()");
   const ns = pyodide.runPython(INIT_MODULE);
   ns.set("_emit_display", handleDisplay);
+  ns.set("_dataframe_registry", pyodide.globals.get("_dataframe_registry"));
   pyodide.runPython(DEFINE_DISPLAY_HELPERS, { globals: ns });
   let runError: unknown = null;
   try {
@@ -196,6 +237,31 @@ export async function run(pyodide: PyodideInterface, id: string, code: string) {
   currentRunId = null;
 }
 
+async function fetchDataframePage(
+  pyodide: PyodideInterface,
+  id: string,
+  handle: string,
+  offset: number,
+  limit: number,
+  sort: { columnIndex: number; direction: "asc" | "desc" } | null,
+) {
+  const resultJson = pyodide.globals.get("_fetch_dataframe_page")(
+    handle,
+    offset,
+    limit,
+    sort?.columnIndex ?? -1,
+    sort?.direction ?? "",
+  ) as string;
+  const parsed = JSON.parse(resultJson) as
+    | { error: string }
+    | { rows: (string | null)[][]; row_count: number };
+  if ("error" in parsed) {
+    post({ type: "dataframe-page-error", id, message: parsed.error });
+    return;
+  }
+  post({ type: "dataframe-page-result", id, rows: parsed.rows, rowCount: parsed.row_count });
+}
+
 // Installed synchronously, before init resolves: a dedicated worker dispatches
 // queued messages whether or not a listener exists, so a run sent during the
 // multi-second load would otherwise be dropped with no trace.
@@ -214,8 +280,18 @@ self.onmessage = (event: MessageEvent<unknown>) => {
     return;
   }
 
+  if (message.type === "run") {
+    const { id, code } = message;
+    void ready.then(
+      (pyodide) => run(pyodide, id, code),
+      () => {},
+    );
+    return;
+  }
+
+  const { id, handle, offset, limit, sort } = message;
   void ready.then(
-    (pyodide) => run(pyodide, message.id, message.code),
+    (pyodide) => fetchDataframePage(pyodide, id, handle, offset, limit, sort),
     () => {},
   );
 };

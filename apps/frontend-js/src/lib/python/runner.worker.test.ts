@@ -120,6 +120,7 @@ describe("run", () => {
         "import json",
         "_emit_display(json.dumps({",
         "    'kind': 'dataframe',",
+        "    'handle': 'h1',",
         "    'columns': ['a'],",
         "    'rows': [['1']],",
         "    'row_count': 600,",
@@ -134,6 +135,7 @@ describe("run", () => {
       id: "6",
       display: {
         kind: "dataframe",
+        handle: "h1",
         columns: ["a"],
         rows: [["1"]],
         rowCount: 600,
@@ -149,5 +151,41 @@ describe("run", () => {
     await run(pyodide, "7", "x = 1");
     const calls = postMessage.mock.calls.map((call) => call[0]);
     expect(calls).toEqual([{ type: "run-result", id: "7" }]);
+  }, 20_000);
+
+  it("registers a displayed dataframe under a handle that a page fetch can look up, and clears it on the next run", async () => {
+    await run(
+      pyodide,
+      "8",
+      ["import pandas as pd", "df = pd.DataFrame({'a': range(10)})", "display(df)"].join("\n"),
+    );
+    const postMessage = self.postMessage as unknown as ReturnType<typeof vi.fn>;
+    const displayCall = postMessage.mock.calls
+      .map((call) => call[0] as { type: string; display?: { handle?: string } })
+      .find((call) => call.type === "display");
+    const handle = displayCall?.display?.handle;
+    expect(handle).toBeTruthy();
+
+    const pageJson = pyodide.globals.get("_fetch_dataframe_page")(
+      handle,
+      2,
+      3,
+      -1,
+      "",
+    ) as string;
+    expect(JSON.parse(pageJson)).toEqual({
+      rows: [["2"], ["3"], ["4"]],
+      row_count: 10,
+    });
+
+    await run(pyodide, "9", "x = 1");
+    const staleJson = pyodide.globals.get("_fetch_dataframe_page")(
+      handle,
+      0,
+      3,
+      -1,
+      "",
+    ) as string;
+    expect(JSON.parse(staleJson)).toEqual({ error: "expired" });
   }, 20_000);
 });
