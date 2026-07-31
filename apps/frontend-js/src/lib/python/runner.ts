@@ -6,7 +6,14 @@ export type OutputEntry =
   | { kind: "stdout"; line: string }
   | { kind: "stderr"; line: string }
   | { kind: "traceback"; text: string }
-  | { kind: "dataframe"; columns: string[]; rows: string[][]; rowCount: number; truncated: boolean }
+  | { kind: "internal-error"; message: string }
+  | {
+      kind: "dataframe";
+      columns: string[];
+      rows: (string | null)[][];
+      rowCount: number;
+      truncated: boolean;
+    }
   | { kind: "plot"; svg: string }
   | { kind: "html"; html: string }
   | { kind: "image"; mime: string; dataBase64: string }
@@ -48,7 +55,14 @@ export class PythonRunnerClient {
     let message;
     try {
       message = parseWorkerToMainMessage(data);
-    } catch {
+    } catch (err) {
+      // A malformed worker message means a display payload violated its schema
+      // (e.g. an unexpected type from Python) -- surface it instead of dropping
+      // the message silently, or the output pane just stays blank.
+      this.callbacks.onOutput({
+        kind: "internal-error",
+        message: `received malformed message from worker: ${String(err)}`,
+      });
       return;
     }
 

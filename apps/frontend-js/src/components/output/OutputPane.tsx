@@ -93,5 +93,11 @@ function renderEntry(entry: OutputEntry, key: number) {
           {entry.line}
         </div>
       );
+    case "internal-error":
+      return (
+        <div key={key} className="text-destructive">
+          [internal error] {entry.message}
+        </div>
+      );
   }
 }

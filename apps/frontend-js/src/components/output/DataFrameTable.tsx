@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 export interface DataFrameTableProps {
   columns: string[];
-  rows: string[][];
+  rows: (string | null)[][];
   rowCount: number;
   truncated: boolean;
 }
@@ -16,7 +16,13 @@ export function DataFrameTable({ columns, rows, rowCount, truncated }: DataFrame
     if (sort === null) return rows;
     const { column, direction } = sort;
     const sign = direction === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => sign * a[column].localeCompare(b[column]));
+    return [...rows].sort((a, b) => {
+      const av = a[column];
+      const bv = b[column];
+      if (av === null) return bv === null ? 0 : sign;
+      if (bv === null) return -sign;
+      return sign * av.localeCompare(bv);
+    });
   }, [rows, sort]);
 
   function toggleSort(column: number) {
@@ -53,7 +59,7 @@ export function DataFrameTable({ columns, rows, rowCount, truncated }: DataFrame
               <tr key={rowIndex} className="border-t border-border">
                 {row.map((cell, cellIndex) => (
                   <td key={cellIndex} className="whitespace-nowrap px-2 py-1 text-foreground">
-                    {cell}
+                    {cell === null ? <span className="text-muted-foreground italic">null</span> : cell}
                   </td>
                 ))}
               </tr>

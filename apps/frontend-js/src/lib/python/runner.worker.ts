@@ -78,13 +78,21 @@ const DEFINE_DISPLAY_HELPERS = [
   "",
   "def _emit_dataframe(df):",
   "    import json",
+  "    import pandas as pd",
   "    row_count = len(df)",
   "    truncated = row_count > 500",
-  "    view = df.head(500).astype(str)",
+  "    view = df.head(500)",
+  // pandas' astype(str) deliberately leaves NaN/NaT as float NaN rather than
+  // stringifying it, which json.dumps then emits as a bare `NaN` token --
+  // invalid JSON that breaks JSON.parse on the main thread.
+  "    rows = [",
+  "        [None if pd.isna(v) else str(v) for v in row]",
+  "        for row in view.itertuples(index=False)",
+  "    ]",
   "    payload = {",
   "        'kind': 'dataframe',",
   "        'columns': [str(c) for c in view.columns],",
-  "        'rows': view.values.tolist(),",
+  "        'rows': rows,",
   "        'row_count': row_count,",
   "        'truncated': truncated,",
   "    }",

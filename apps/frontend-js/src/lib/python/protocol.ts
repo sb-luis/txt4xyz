@@ -45,7 +45,7 @@ export const initFailureMessageSchema = z.object({
 export const dataframeDisplaySchema = z.object({
   kind: z.literal("dataframe"),
   columns: z.array(z.string()),
-  rows: z.array(z.array(z.string())),
+  rows: z.array(z.array(z.string().nullable())),
   rowCount: z.number(),
   truncated: z.boolean(),
 });
