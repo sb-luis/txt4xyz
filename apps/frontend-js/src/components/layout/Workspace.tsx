@@ -1,54 +1,113 @@
-import type { ReactNode } from "react";
-import { CollapseExpandToggle } from "@/components/ui/CollapseExpandToggle";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { usePanelCallbackRef } from "react-resizable-panels";
+import type { WorkspaceLayout } from "@/lib/workspace/layout";
 
 export interface WorkspaceProps {
   editor: ReactNode;
   output: ReactNode;
-  outputCollapsed: boolean;
-  onToggleOutput: () => void;
+  layout: WorkspaceLayout;
 }
 
-// A single grid drives both the 60/40 split and the collapse animation: its
-// track sizes are plain fr values, which browsers interpolate smoothly as
-// long as the track count stays the same across the transition.
-const EXPANDED_TRACKS = "grid-rows-[3fr_2fr] md:grid-cols-[3fr_2fr]";
-const COLLAPSED_TRACKS = "grid-rows-[1fr_0fr] md:grid-cols-[1fr_0fr]";
+const DESKTOP_QUERY = "(min-width: 768px)";
 
-export function Workspace({ editor, output, outputCollapsed, onToggleOutput }: WorkspaceProps) {
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia(DESKTOP_QUERY).matches);
+
+  useEffect(() => {
+    const media = window.matchMedia(DESKTOP_QUERY);
+    const onChange = (event: MediaQueryListEvent) => setIsDesktop(event.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  return isDesktop;
+}
+
+export function Workspace({ editor, output, layout }: WorkspaceProps) {
+  const isDesktop = useIsDesktop();
+  const [editorPanel, setEditorPanel] = usePanelCallbackRef();
+  const [outputPanel, setOutputPanel] = usePanelCallbackRef();
+
+  // Drives collapse from the layout switcher (toggle group / keyboard
+  // shortcut) rather than the drag gesture — react-resizable-panels handles
+  // drag-driven resizing on its own via minSize/collapsedSize.
+  useEffect(() => {
+    if (editorPanel === null || outputPanel === null) return;
+    if (layout === "editor") {
+      outputPanel.collapse();
+      if (editorPanel.isCollapsed()) editorPanel.expand();
+    } else if (layout === "output") {
+      editorPanel.collapse();
+      if (outputPanel.isCollapsed()) outputPanel.expand();
+    } else {
+      if (editorPanel.isCollapsed()) editorPanel.expand();
+      if (outputPanel.isCollapsed()) outputPanel.expand();
+    }
+  }, [layout, editorPanel, outputPanel]);
+
+  const editorCollapsed = layout === "output";
+  const outputCollapsed = layout === "editor";
+
   return (
-    <div
-      className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-lg border border-app-hairline bg-app-bg shadow-sm transition-[grid-template-rows,grid-template-columns] duration-300 ease-in-out md:grid-rows-1 ${
-        outputCollapsed ? COLLAPSED_TRACKS : EXPANDED_TRACKS
-      }`}
+    <ResizablePanelGroup
+      orientation={isDesktop ? "horizontal" : "vertical"}
+      className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-background shadow-sm"
     >
-      <section aria-label="editor" className="relative flex min-h-0 min-w-0 flex-col overflow-hidden">
-        <header className="shrink-0 border-b border-app-hairline px-4 py-2">
-          <h2 className="font-mono text-xs uppercase tracking-wide text-app-fg/70">
-            editor
-          </h2>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto">{editor}</div>
+      <ResizablePanel
+        id="editor"
+        defaultSize={60}
+        minSize={20}
+        collapsible
+        collapsedSize={0}
+        panelRef={setEditorPanel}
+        className="flex min-h-0 min-w-0 flex-col overflow-hidden"
+      >
+        <section
+          aria-label="editor"
+          aria-hidden={editorCollapsed}
+          inert={editorCollapsed}
+          className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+        >
+          <header className="shrink-0 border-b border-border px-4 py-2">
+            <h2 className="font-mono text-xs uppercase tracking-wide text-foreground/70">
+              editor
+            </h2>
+          </header>
+          <div className="min-h-0 flex-1 overflow-auto">{editor}</div>
+        </section>
+      </ResizablePanel>
 
-        <CollapseExpandToggle collapsed={outputCollapsed} onToggle={onToggleOutput} />
-      </section>
+      <ResizableHandle />
 
-      <div className="flex min-h-0 min-w-0 flex-col overflow-hidden md:flex-row">
-        <div className="h-px w-full shrink-0 bg-app-hairline md:h-full md:w-px" />
+      <ResizablePanel
+        id="output"
+        defaultSize={40}
+        minSize={20}
+        collapsible
+        collapsedSize={0}
+        panelRef={setOutputPanel}
+        className="flex min-h-0 min-w-0 flex-col overflow-hidden"
+      >
         <section
           id="output-panel"
           aria-label="output"
           aria-hidden={outputCollapsed}
           inert={outputCollapsed}
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
         >
-          <header className="shrink-0 border-b border-app-hairline px-4 py-2">
-            <h2 className="font-mono text-xs uppercase tracking-wide text-app-fg/70">
+          <header className="shrink-0 border-b border-border px-4 py-2">
+            <h2 className="font-mono text-xs uppercase tracking-wide text-foreground/70">
               output
             </h2>
           </header>
           <div className="min-h-0 flex-1 overflow-auto p-4">{output}</div>
         </section>
-      </div>
-    </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

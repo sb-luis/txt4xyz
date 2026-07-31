@@ -11,12 +11,13 @@ import { AliasProvider, useAlias } from "@/lib/alias/AliasContext";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
 import { VimModeProvider } from "@/lib/vim/VimModeContext";
 import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
+import { nextWorkspaceLayout, type WorkspaceLayout } from "@/lib/workspace/layout";
 
 function AppShellInner() {
   const { status, output, run, stop, clearOutput } = usePythonRunner();
   const [roomId, setRoomId] = useState(() => resolveEditorRoomId());
   const [docLength, setDocLength] = useState(0);
-  const [outputCollapsed, setOutputCollapsed] = useState(false);
+  const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>("split");
   const codeRef = useRef("");
   const { alias } = useAlias();
   const {
@@ -48,7 +49,7 @@ function AppShellInner() {
     if (status !== "ready") return false;
     clearOutput();
     run(codeRef.current);
-    setOutputCollapsed(false);
+    setWorkspaceLayout("split");
     return true;
   }, [status, clearOutput, run]);
 
@@ -62,11 +63,11 @@ function AppShellInner() {
     stop();
   }, [status, stop]);
 
-  const handleToggleOutput = useCallback(() => {
-    setOutputCollapsed((prev) => !prev);
+  const handleCycleLayout = useCallback(() => {
+    setWorkspaceLayout((prev) => nextWorkspaceLayout(prev));
   }, []);
 
-  useGlobalShortcuts({ onRun: handleRun, onStop: handleStop, onToggleOutput: handleToggleOutput });
+  useGlobalShortcuts({ onRun: handleRun, onStop: handleStop, onCycleLayout: handleCycleLayout });
 
   // a received broadcast runs locally (never re-broadcasts)
   useEffect(() => {
@@ -86,17 +87,18 @@ function AppShellInner() {
   }, [status]);
 
   return (
-    <div className="flex h-full flex-col bg-app-bg text-app-fg">
+    <div className="flex h-full flex-col bg-background text-foreground">
       <AppHeader
         status={status}
         onRun={handleRun}
         onStop={handleStop}
         room={{ status: roomStatus, rejectedCode, participants }}
+        workspaceLayout={workspaceLayout}
+        onWorkspaceLayoutChange={setWorkspaceLayout}
       />
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg px-3 py-0">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background px-3 py-0">
         <Workspace
-          outputCollapsed={outputCollapsed}
-          onToggleOutput={handleToggleOutput}
+          layout={workspaceLayout}
           editor={
             ytext === null ? null : (
               <CodeEditor

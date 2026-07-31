@@ -1,5 +1,5 @@
 import type { RunnerStatus } from "@/lib/python/runner";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 
 export interface RunStopButtonProps {
   status: RunnerStatus;
@@ -10,7 +10,7 @@ export interface RunStopButtonProps {
 export function RunStopButton({ status, onRun, onStop }: RunStopButtonProps) {
   if (status === "running") {
     return (
-      <Button variant="danger" onClick={onStop}>
+      <Button variant="destructive" onClick={onStop}>
         Stop
       </Button>
     );

@@ -1,7 +1,12 @@
-import { Modal } from "@/components/ui/Modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AliasField } from "@/components/settings/AliasField";
 import { ShortcutList } from "@/components/settings/ShortcutList";
-import { Switch } from "@/components/ui/Switch";
+import { Switch } from "@/components/ui/switch";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { useVimMode } from "@/lib/vim/VimModeContext";
 
@@ -14,27 +19,38 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const { vimMode, toggleVimMode } = useVimMode();
 
   return (
-    <Modal open={open} onClose={onClose} title="Settings">
-      <div className="flex flex-col gap-4">
-        <section className="flex items-center justify-between gap-4">
-          <h3 className="text-xs uppercase tracking-wide text-app-fg/70">Alias</h3>
-          <AliasField />
-        </section>
-        <section>
-          <h3 className="mb-1.5 text-xs uppercase tracking-wide text-app-fg/70">
-            Shortcuts
-          </h3>
-          <ShortcutList />
-        </section>
-        <section className="flex items-center justify-between gap-4">
-          <h3 className="text-xs uppercase tracking-wide text-app-fg/70">Theme</h3>
-          <ThemeSwitcher />
-        </section>
-        <section className="flex items-center justify-between gap-4">
-          <h3 className="text-xs uppercase tracking-wide text-app-fg/70">Vim keybindings</h3>
-          <Switch checked={vimMode} onChange={toggleVimMode} aria-label="toggle vim keybindings" />
-        </section>
-      </div>
-    </Modal>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="max-w-sm font-mono">
+        <DialogHeader>
+          <DialogTitle className="text-xs uppercase tracking-wide text-foreground/70">
+            Settings
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <section className="flex items-center justify-between gap-4">
+            <h3 className="text-xs uppercase tracking-wide text-foreground/70">Alias</h3>
+            <AliasField />
+          </section>
+          <section>
+            <h3 className="mb-1.5 text-xs uppercase tracking-wide text-foreground/70">
+              Shortcuts
+            </h3>
+            <ShortcutList />
+          </section>
+          <section className="flex items-center justify-between gap-4">
+            <h3 className="text-xs uppercase tracking-wide text-foreground/70">Theme</h3>
+            <ThemeSwitcher />
+          </section>
+          <section className="flex items-center justify-between gap-4">
+            <h3 className="text-xs uppercase tracking-wide text-foreground/70">Vim keybindings</h3>
+            <Switch
+              checked={vimMode}
+              onCheckedChange={toggleVimMode}
+              aria-label="toggle vim keybindings"
+            />
+          </section>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

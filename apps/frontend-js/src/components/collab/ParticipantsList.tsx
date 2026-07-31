@@ -5,7 +5,7 @@ import {
   type ConnectionStatus,
 } from "@/lib/collab/provider";
 import type { Participant } from "@/lib/collab/useRoom";
-import { Popover } from "@/components/ui/Popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const MAX_VISIBLE_AVATARS = 3;
 
@@ -17,8 +17,8 @@ const AVATAR_CLASS =
 // list, never on anything synced through awareness. Two peers can (and will)
 // render the same participant in different tones.
 const AVATAR_TONE_CLASS = [
-  "bg-app-surface-bg text-app-surface-fg",
-  "bg-app-surface-secondary-bg text-app-surface-secondary-fg",
+  "bg-card text-card-foreground",
+  "bg-secondary text-secondary-foreground",
 ];
 
 const ROOM_STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -49,7 +49,7 @@ function ConnectingIndicator() {
       {BOUNCE_DELAYS_MS.map((delay) => (
         <span
           key={delay}
-          className="h-1 w-1 animate-bounce rounded-full bg-app-fg/50"
+          className="h-1 w-1 animate-bounce rounded-full bg-foreground/50"
           style={{ animationDelay: `${delay}ms` }}
         />
       ))}
@@ -69,11 +69,12 @@ export function ParticipantsList({ room }: ParticipantsListProps) {
   const connected = status === "connected";
 
   return (
-    <Popover
-      triggerLabel={`room: ${label}`}
-      triggerClassName="flex cursor-pointer items-center"
-      trigger={
-        connected ? (
+    <Popover>
+      <PopoverTrigger
+        aria-label={`room: ${label}`}
+        className="flex cursor-pointer items-center"
+      >
+        {connected ? (
           <span className="flex items-center -space-x-2">
             {visible.map((participant, index) => (
               <span
@@ -93,18 +94,19 @@ export function ParticipantsList({ room }: ParticipantsListProps) {
           </span>
         ) : (
           <ConnectingIndicator />
-        )
-      }
-    >
-      {connected ? (
-        <ul aria-label="participants" className="flex flex-col gap-1">
-          {participants.map((participant) => (
-            <li key={participant.clientId}>{participant.name}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-app-surface-fg/70">{label}</p>
-      )}
+        )}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto font-mono text-xs">
+        {connected ? (
+          <ul aria-label="participants" className="flex flex-col gap-1">
+            {participants.map((participant) => (
+              <li key={participant.clientId}>{participant.name}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-card-foreground/70">{label}</p>
+        )}
+      </PopoverContent>
     </Popover>
   );
 }

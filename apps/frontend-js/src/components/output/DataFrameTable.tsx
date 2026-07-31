@@ -28,10 +28,10 @@ export function DataFrameTable({ columns, rows, rowCount, truncated }: DataFrame
   }
 
   return (
-    <div className="border border-app-border">
+    <div className="border border-border">
       <div className="max-h-80 overflow-auto">
         <table className="w-full border-collapse font-mono text-sm">
-          <thead className="sticky top-0 bg-app-surface-bg text-app-surface-fg">
+          <thead className="sticky top-0 bg-card text-card-foreground">
             <tr>
               {columns.map((column, index) => (
                 <th
@@ -50,9 +50,9 @@ export function DataFrameTable({ columns, rows, rowCount, truncated }: DataFrame
           </thead>
           <tbody>
             {sortedRows.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-t border-app-hairline">
+              <tr key={rowIndex} className="border-t border-border">
                 {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} className="whitespace-nowrap px-2 py-1 text-app-fg">
+                  <td key={cellIndex} className="whitespace-nowrap px-2 py-1 text-foreground">
                     {cell}
                   </td>
                 ))}
@@ -62,7 +62,7 @@ export function DataFrameTable({ columns, rows, rowCount, truncated }: DataFrame
         </table>
       </div>
       {truncated ? (
-        <p className="border-t border-app-hairline px-2 py-1 text-xs text-app-fg/70">
+        <p className="border-t border-border px-2 py-1 text-xs text-foreground/70">
           showing first {rows.length} of {rowCount} rows
         </p>
       ) : null}

@@ -19,7 +19,7 @@ describe("SettingsModal", () => {
 
     expect(screen.getByText("Run code")).toBeTruthy();
     expect(screen.getByText("Stop execution")).toBeTruthy();
-    expect(screen.getByText("Collapse/expand output")).toBeTruthy();
+    expect(screen.getByText("Cycle workspace layout")).toBeTruthy();
 
     const before = document.documentElement.getAttribute("data-theme");
     fireEvent.click(screen.getByRole("button", { name: /switch to (dark|light) mode/ }));

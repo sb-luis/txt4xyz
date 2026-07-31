@@ -1,46 +1,30 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { Workspace } from "@/components/layout/Workspace";
 
 describe("Workspace", () => {
-  it("renders the editor and output regions", () => {
+  it("renders the editor and output regions in split layout", () => {
     render(
-      <Workspace
-        editor={<p>editor content</p>}
-        output={<p>output content</p>}
-        outputCollapsed={false}
-        onToggleOutput={() => {}}
-      />,
+      <Workspace editor={<p>editor content</p>} output={<p>output content</p>} layout="split" />,
     );
     expect(screen.getByRole("region", { name: "editor" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "output" })).toBeTruthy();
     expect(screen.getByText("output content")).toBeTruthy();
   });
 
-  it("hides the output region from the accessibility tree when collapsed", () => {
+  it("hides the output region from the accessibility tree in full-editor layout", () => {
     render(
-      <Workspace
-        editor={<p>editor content</p>}
-        output={<p>output content</p>}
-        outputCollapsed={true}
-        onToggleOutput={() => {}}
-      />,
+      <Workspace editor={<p>editor content</p>} output={<p>output content</p>} layout="editor" />,
     );
     expect(screen.queryByRole("region", { name: "output" })).toBeNull();
-    expect(screen.getByRole("button", { name: "expand output" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "editor" })).toBeTruthy();
   });
 
-  it("calls onToggleOutput when the toggle is clicked", () => {
-    const onToggleOutput = vi.fn();
+  it("hides the editor region from the accessibility tree in full-output layout", () => {
     render(
-      <Workspace
-        editor={<p>editor content</p>}
-        output={<p>output content</p>}
-        outputCollapsed={false}
-        onToggleOutput={onToggleOutput}
-      />,
+      <Workspace editor={<p>editor content</p>} output={<p>output content</p>} layout="output" />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "collapse output" }));
-    expect(onToggleOutput).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("region", { name: "editor" })).toBeNull();
+    expect(screen.getByRole("region", { name: "output" })).toBeTruthy();
   });
 });

@@ -23,19 +23,19 @@ describe("AppHeader", () => {
     const onRun = vi.fn();
     const onStop = vi.fn();
     const { rerender } = render(
-      withTheme(<AppHeader status="loading" onRun={onRun} onStop={onStop} room={DISCONNECTED_ROOM} />),
+      withTheme(<AppHeader status="loading" onRun={onRun} onStop={onStop} room={DISCONNECTED_ROOM} workspaceLayout="split" onWorkspaceLayoutChange={vi.fn()} />),
     );
     expect((screen.getByRole("button", { name: "Run" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
 
     rerender(
-      withTheme(<AppHeader status="error" onRun={onRun} onStop={onStop} room={DISCONNECTED_ROOM} />),
+      withTheme(<AppHeader status="error" onRun={onRun} onStop={onStop} room={DISCONNECTED_ROOM} workspaceLayout="split" onWorkspaceLayoutChange={vi.fn()} />),
     );
     expect((screen.getByRole("button", { name: "Run" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
 
     rerender(
-      withTheme(<AppHeader status="ready" onRun={onRun} onStop={onStop} room={DISCONNECTED_ROOM} />),
+      withTheme(<AppHeader status="ready" onRun={onRun} onStop={onStop} room={DISCONNECTED_ROOM} workspaceLayout="split" onWorkspaceLayoutChange={vi.fn()} />),
     );
     const runButton = screen.getByRole("button", { name: "Run" }) as HTMLButtonElement;
     expect(runButton.disabled).toBe(false);
@@ -46,7 +46,7 @@ describe("AppHeader", () => {
     expect(onStop).not.toHaveBeenCalled();
 
     rerender(
-      withTheme(<AppHeader status="running" onRun={onRun} onStop={onStop} room={DISCONNECTED_ROOM} />),
+      withTheme(<AppHeader status="running" onRun={onRun} onStop={onStop} room={DISCONNECTED_ROOM} workspaceLayout="split" onWorkspaceLayoutChange={vi.fn()} />),
     );
     const stopButton = screen.getByRole("button", { name: "Stop" }) as HTMLButtonElement;
     expect(stopButton.disabled).toBe(false);
@@ -65,16 +65,37 @@ describe("AppHeader", () => {
           onRun={vi.fn()}
           onStop={vi.fn()}
           room={{ status: "connected", rejectedCode: null, participants: [] }}
+          workspaceLayout="split"
+          onWorkspaceLayoutChange={vi.fn()}
         />,
       ),
     );
     expect(screen.getByRole("button", { name: /^room:/ })).toBeTruthy();
   });
 
+  it("calls onWorkspaceLayoutChange when a layout option is selected", () => {
+    const onWorkspaceLayoutChange = vi.fn();
+    render(
+      withTheme(
+        <AppHeader
+          status="ready"
+          onRun={vi.fn()}
+          onStop={vi.fn()}
+          room={DISCONNECTED_ROOM}
+          workspaceLayout="split"
+          onWorkspaceLayoutChange={onWorkspaceLayoutChange}
+        />,
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "output only" }));
+    expect(onWorkspaceLayoutChange).toHaveBeenCalledWith("output");
+  });
+
   it("opens the settings modal, which shows shortcuts and a theme switcher", () => {
     render(
       withTheme(
-        <AppHeader status="ready" onRun={vi.fn()} onStop={vi.fn()} room={DISCONNECTED_ROOM} />,
+        <AppHeader status="ready" onRun={vi.fn()} onStop={vi.fn()} room={DISCONNECTED_ROOM} workspaceLayout="split" onWorkspaceLayoutChange={vi.fn()} />,
       ),
     );
 

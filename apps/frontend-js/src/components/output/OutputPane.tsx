@@ -19,15 +19,15 @@ export function OutputPane({ status, output }: OutputPaneProps) {
   }, [output]);
 
   if (status === "loading") {
-    return <p className="font-mono text-sm text-app-fg/70">loading Python runtime…</p>;
+    return <p className="font-mono text-sm text-foreground/70">loading Python runtime…</p>;
   }
 
   if (status === "error") {
-    return <p className="font-mono text-sm text-app-error">Python runtime failed to load.</p>;
+    return <p className="font-mono text-sm text-destructive">Python runtime failed to load.</p>;
   }
 
   if (output.length === 0) {
-    return <p className="font-mono text-sm text-app-fg/70">Run your code to see output here.</p>;
+    return <p className="font-mono text-sm text-foreground/70">Run your code to see output here.</p>;
   }
 
   return (
@@ -77,19 +77,19 @@ function renderEntry(entry: OutputEntry, key: number) {
       );
     case "traceback":
       return (
-        <div key={key} className="text-app-error">
+        <div key={key} className="text-destructive">
           {entry.text}
         </div>
       );
     case "stdout":
       return (
-        <div key={key} className="text-app-fg">
+        <div key={key} className="text-foreground">
           {entry.line}
         </div>
       );
     case "stderr":
       return (
-        <div key={key} className="text-app-error">
+        <div key={key} className="text-destructive">
           {entry.line}
         </div>
       );

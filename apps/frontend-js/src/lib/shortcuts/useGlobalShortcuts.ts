@@ -3,21 +3,21 @@ import { useEffect } from "react";
 export interface GlobalShortcutHandlers {
   onRun: () => void;
   onStop: () => void;
-  onToggleOutput: () => void;
+  onCycleLayout: () => void;
 }
 
 function isModifierPressed(event: KeyboardEvent): boolean {
   return event.metaKey || event.ctrlKey;
 }
 
-// Any open dialog (settings modal, participants popover) owns Escape/closing
-// while it's open, so the global Stop shortcut must stand down rather than
-// racing it.
+// Any open dialog or popover (settings modal, participants popover) owns
+// Escape/closing while it's open, so the global Stop shortcut must stand
+// down rather than racing it.
 function isDialogOpen(): boolean {
-  return document.querySelector('[role="dialog"]') !== null;
+  return document.querySelector('[role="dialog"], [data-slot="popover-content"]') !== null;
 }
 
-export function useGlobalShortcuts({ onRun, onStop, onToggleOutput }: GlobalShortcutHandlers) {
+export function useGlobalShortcuts({ onRun, onStop, onCycleLayout }: GlobalShortcutHandlers) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (isDialogOpen()) return;
@@ -29,7 +29,7 @@ export function useGlobalShortcuts({ onRun, onStop, onToggleOutput }: GlobalShor
       }
       if (isModifierPressed(event) && event.key === "\\") {
         event.preventDefault();
-        onToggleOutput();
+        onCycleLayout();
         return;
       }
       if (event.key === "Escape") {
@@ -39,5 +39,5 @@ export function useGlobalShortcuts({ onRun, onStop, onToggleOutput }: GlobalShor
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onRun, onStop, onToggleOutput]);
+  }, [onRun, onStop, onCycleLayout]);
 }

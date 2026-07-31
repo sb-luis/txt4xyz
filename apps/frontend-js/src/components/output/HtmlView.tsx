@@ -11,7 +11,7 @@ export function HtmlView({ html }: HtmlViewProps) {
       srcDoc={html}
       sandbox=""
       title="rich output"
-      className="max-h-80 w-full border border-app-border bg-white"
+      className="max-h-80 w-full border border-border bg-white"
     />
   );
 }

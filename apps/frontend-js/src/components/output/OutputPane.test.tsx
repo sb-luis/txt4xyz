@@ -31,9 +31,9 @@ describe("OutputPane", () => {
     const stderrLine = screen.getByText("warn");
     const tracebackLine = screen.getByText("ZeroDivisionError");
 
-    expect(stdoutLine.className).toContain("text-app-fg");
-    expect(stderrLine.className).toContain("text-app-error");
-    expect(tracebackLine.className).toContain("text-app-error");
+    expect(stdoutLine.className).toContain("text-foreground");
+    expect(stderrLine.className).toContain("text-destructive");
+    expect(tracebackLine.className).toContain("text-destructive");
   });
 
   it("renders output while running", () => {

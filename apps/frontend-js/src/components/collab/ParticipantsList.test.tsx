@@ -5,6 +5,12 @@ import { ParticipantsList } from "./ParticipantsList";
 
 const DISCONNECTED_ROOM = { status: "disconnected" as const, rejectedCode: null, participants: [] };
 
+function getPopoverContent(): HTMLElement {
+  const content = document.querySelector('[data-slot="popover-content"]');
+  if (content === null) throw new Error("popover content not found");
+  return content as HTMLElement;
+}
+
 describe("ParticipantsList", () => {
   it("always renders a trigger so room status is discoverable, even with no other participants", () => {
     render(<ParticipantsList room={DISCONNECTED_ROOM} />);
@@ -17,7 +23,7 @@ describe("ParticipantsList", () => {
     );
     expect(screen.getByRole("button", { name: /^room:/ }).getAttribute("aria-label")).toMatch(/connecting/i);
     fireEvent.click(screen.getByRole("button", { name: /^room:/ }));
-    expect(screen.getByRole("dialog").textContent).toMatch(/connecting/i);
+    expect(getPopoverContent().textContent).toMatch(/connecting/i);
 
     rerender(<ParticipantsList room={{ status: "disconnected", rejectedCode: null, participants: [] }} />);
     expect(screen.getByRole("button", { name: /^room:/ }).getAttribute("aria-label")).toMatch(/disconnected/i);
@@ -28,7 +34,7 @@ describe("ParticipantsList", () => {
     expect(screen.getByRole("button", { name: /^room:/ }).getAttribute("aria-label")).toMatch(/^room: connected$/i);
 
     fireEvent.click(screen.getByRole("button", { name: /^room:/ }));
-    expect(screen.getByRole("dialog").textContent).not.toMatch(/connected/i);
+    expect(getPopoverContent().textContent).not.toMatch(/connected/i);
   });
 
   it("shows a distinct message per rejection code, and a generic fallback for an unknown one", () => {
@@ -69,7 +75,7 @@ describe("ParticipantsList", () => {
     render(<ParticipantsList room={{ status: "connected", rejectedCode: null, participants }} />);
 
     fireEvent.click(screen.getByRole("button", { name: /^room:/ }));
-    const dialog = screen.getByRole("dialog");
+    const dialog = getPopoverContent();
     expect(dialog.textContent).toMatch(/ava.*bo/is);
   });
 });

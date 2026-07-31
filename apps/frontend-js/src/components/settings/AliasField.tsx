@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/ui/input";
 import { useAlias } from "@/lib/alias/AliasContext";
 import { MAX_ALIAS_LENGTH, isValidAlias } from "@/lib/alias/alias";
 
@@ -23,7 +23,7 @@ export function AliasField() {
         aria-invalid={invalid}
       />
       {invalid && (
-        <span className="text-xs text-app-error">
+        <span className="text-xs text-destructive">
           alphanumeric and hyphens only, up to {MAX_ALIAS_LENGTH} characters
         </span>
       )}
