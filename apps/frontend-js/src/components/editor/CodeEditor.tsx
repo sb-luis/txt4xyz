@@ -1,8 +1,8 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { python } from "@codemirror/lang-python";
-import { bracketMatching, indentOnInput } from "@codemirror/language";
+import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language";
 import { Compartment, EditorState, StateEffect, StateField, Transaction } from "@codemirror/state";
-import { Decoration, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
+import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import type { DecorationSet } from "@codemirror/view";
 import { vim } from "@replit/codemirror-vim";
 import { yCollab, yRemoteSelectionsTheme } from "y-codemirror.next";
@@ -10,7 +10,7 @@ import { useEffect, useRef } from "react";
 import type * as Y from "yjs";
 import type * as awarenessProtocol from "y-protocols/awareness";
 import { useVimMode } from "@/lib/vim/VimModeContext";
-import { editorTheme } from "./theme";
+import { editorTheme, syntaxHighlightStyle } from "./theme";
 
 // briefly highlight every line, then fade back.
 const RUN_FLASH_MS = 350;
@@ -84,6 +84,7 @@ export function CodeEditor({ initialDoc, onChange, ytext, awareness, flashKey }:
         vimCompartment.of(vimMode ? [vim()] : []),
         lineNumbers(),
         highlightActiveLine(),
+        drawSelection(),
         history(),
         indentOnInput(),
         bracketMatching(),
@@ -96,6 +97,7 @@ export function CodeEditor({ initialDoc, onChange, ytext, awareness, flashKey }:
           ...historyKeymap,
         ]),
         python(),
+        syntaxHighlighting(syntaxHighlightStyle),
         editorTheme,
         yRemoteSelectionsTheme,
         EditorView.lineWrapping,

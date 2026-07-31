@@ -36,58 +36,136 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+ * Gruvbox palette — raw color values only, no semantics. See
+ * https://github.com/morhetz/gruvbox/blob/master/colors/gruvbox.vim
+ * Everything below (shadcn tokens, CodeMirror theme) is assembled from these.
+ */
+:root {
+  --gb-dark0-hard: #1d2021;
+  --gb-dark0: #282828;
+  --gb-dark0-soft: #32302f;
+  --gb-dark1: #3c3836;
+  --gb-dark2: #504945;
+  --gb-dark3: #665c54;
+  --gb-dark4: #7c6f64;
+
+  --gb-light0-hard: #f9f5d7;
+  --gb-light0: #fbf1c7;
+  --gb-light0-soft: #f2e5bc;
+  --gb-light1: #ebdbb2;
+  --gb-light2: #d5c4a1;
+  --gb-light3: #bdae93;
+  --gb-light4: #a89984;
+
+  --gb-gray: #928374;
+
+  --gb-red-bright: #fb4934;
+  --gb-red-neutral: #cc241d;
+  --gb-red-faded: #9d0006;
+  --gb-green-bright: #b8bb26;
+  --gb-green-neutral: #98971a;
+  --gb-green-faded: #79740e;
+  --gb-yellow-bright: #fabd2f;
+  --gb-yellow-neutral: #d79921;
+  --gb-yellow-faded: #b57614;
+  --gb-blue-bright: #83a598;
+  --gb-blue-neutral: #458588;
+  --gb-blue-faded: #076678;
+  --gb-purple-bright: #d3869b;
+  --gb-purple-neutral: #b16286;
+  --gb-purple-faded: #8f3f71;
+  --gb-aqua-bright: #8ec07c;
+  --gb-aqua-neutral: #689d6a;
+  --gb-aqua-faded: #427b58;
+  --gb-orange-bright: #fe8019;
+  --gb-orange-neutral: #d65d0e;
+  --gb-orange-faded: #af3a03;
+}
+
 :root {
   --radius: 0.625rem;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --background: var(--gb-light0);
+  --foreground: var(--gb-dark1);
+  --border: var(--gb-light3);
+  --input: var(--gb-light3);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --card: var(--gb-light0);
+  --card-foreground: var(--gb-dark1);
+  --popover: var(--gb-light0);
+  --popover-foreground: var(--gb-dark1);
 
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: var(--gb-light1);
+  --secondary-foreground: var(--gb-dark1);
+  --muted: var(--gb-light1);
+  --muted-foreground: var(--gb-gray);
+  --accent: var(--gb-light1);
+  --accent-foreground: var(--gb-dark1);
 
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: var(--gb-red-faded);
 
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.708 0 0);
+  --primary: var(--gb-dark1);
+  --primary-foreground: var(--gb-light0);
+  --ring: var(--gb-gray);
 
   --flash: oklch(85% 0.17 95);
+
+  --syntax-keyword: var(--gb-red-faded);
+  --syntax-string: var(--gb-green-faded);
+  --syntax-number: var(--gb-purple-neutral);
+  --syntax-comment: var(--gb-gray);
+  --syntax-function: var(--gb-blue-faded);
+  --syntax-operator: var(--gb-dark1);
+  --syntax-type: var(--gb-yellow-faded);
+
+  --selection-bg: var(--gb-light2);
+  --selection-fg: var(--gb-dark1);
+
+  --cursor: var(--gb-gray);
 }
 
 :root[data-theme="dark"] {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --background: var(--gb-dark0);
+  --foreground: var(--gb-light1);
+  --border: var(--gb-dark2);
+  --input: var(--gb-dark2);
 
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
+  --card: var(--gb-dark0);
+  --card-foreground: var(--gb-light1);
+  --popover: var(--gb-dark0);
+  --popover-foreground: var(--gb-light1);
 
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: var(--gb-dark1);
+  --secondary-foreground: var(--gb-light1);
+  --muted: var(--gb-dark1);
+  --muted-foreground: var(--gb-gray);
+  --accent: var(--gb-dark1);
+  --accent-foreground: var(--gb-light1);
 
-  --destructive: oklch(0.704 0.191 22.216);
+  --destructive: var(--gb-red-bright);
 
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --ring: oklch(0.556 0 0);
+  --primary: var(--gb-light1);
+  --primary-foreground: var(--gb-dark0);
+  --ring: var(--gb-gray);
+
+  --syntax-keyword: var(--gb-red-bright);
+  --syntax-string: var(--gb-green-bright);
+  --syntax-number: var(--gb-purple-bright);
+  --syntax-comment: var(--gb-gray);
+  --syntax-function: var(--gb-blue-bright);
+  --syntax-operator: var(--gb-light1);
+  --syntax-type: var(--gb-yellow-bright);
+
+  --selection-bg: var(--gb-dark2);
+  --selection-fg: var(--gb-light1);
+
+  --cursor: var(--gb-light4);
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 @keyframes run-flash-fade {

@@ -75,6 +75,7 @@ export function useRoom(roomId: string | null, alias: string | null = null): Use
   const listenersRef = useRef(new Set<() => void>());
   const awarenessRef = useRef<awarenessProtocol.Awareness | null>(null);
   const placeholderNameRef = useRef<string | null>(null);
+  const colorRef = useRef<string | null>(null);
   const providerRef = useRef<SyncProvider | null>(null);
 
   const subscribe = useCallback((onStoreChange: () => void) => {
@@ -109,6 +110,7 @@ export function useRoom(roomId: string | null, alias: string | null = null): Use
     const awareness = new awarenessProtocol.Awareness(doc);
     const identity = generateIdentity();
     placeholderNameRef.current = identity.name;
+    colorRef.current = identity.color;
     awareness.setLocalStateField("user", identity);
     awarenessRef.current = awareness;
 
@@ -204,7 +206,7 @@ export function useRoom(roomId: string | null, alias: string | null = null): Use
     if (awareness === null) return;
     const name = alias ?? placeholderNameRef.current;
     if (name === null) return;
-    awareness.setLocalStateField("user", { name });
+    awareness.setLocalStateField("user", { name, color: colorRef.current });
   }, [roomId, alias]);
 
   return useSyncExternalStore(subscribe, getSnapshot);
