@@ -71,14 +71,14 @@ export function ParticipantsList({ room }: ParticipantsListProps) {
         {connected ? (
           <AvatarGroup>
             {visible.map((participant) => (
-              <Avatar key={participant.clientId} size="sm">
+              <Avatar key={participant.clientId}>
                 <AvatarFallback>
                   {participant.name.slice(0, 1).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             ))}
             {hiddenCount > 0 && (
-              <AvatarGroupCount className="size-6 text-xs">+{hiddenCount}</AvatarGroupCount>
+              <AvatarGroupCount>+{hiddenCount}</AvatarGroupCount>
             )}
           </AvatarGroup>
         ) : (

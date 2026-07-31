@@ -109,6 +109,12 @@ body,
   height: 100%;
 }
 
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}
+
 body {
   background-color: var(--background);
   color-scheme: light dark;
