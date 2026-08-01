@@ -4,6 +4,7 @@ export interface GlobalShortcutHandlers {
   onRun: () => void;
   onStop: () => void;
   onCycleLayout: () => void;
+  onFormat: () => void;
 }
 
 function isModifierPressed(event: KeyboardEvent): boolean {
@@ -17,7 +18,7 @@ function isDialogOpen(): boolean {
   return document.querySelector('[role="dialog"], [data-slot="popover-content"]') !== null;
 }
 
-export function useGlobalShortcuts({ onRun, onStop, onCycleLayout }: GlobalShortcutHandlers) {
+export function useGlobalShortcuts({ onRun, onStop, onCycleLayout, onFormat }: GlobalShortcutHandlers) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (isDialogOpen()) return;
@@ -32,6 +33,11 @@ export function useGlobalShortcuts({ onRun, onStop, onCycleLayout }: GlobalShort
         onCycleLayout();
         return;
       }
+      if (isModifierPressed(event) && event.shiftKey && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        onFormat();
+        return;
+      }
       if (event.key === "Escape") {
         onStop();
       }
@@ -39,5 +45,5 @@ export function useGlobalShortcuts({ onRun, onStop, onCycleLayout }: GlobalShort
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onRun, onStop, onCycleLayout]);
+  }, [onRun, onStop, onCycleLayout, onFormat]);
 }

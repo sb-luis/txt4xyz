@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CodeEditor, MAX_DOC_LENGTH } from "@/components/editor/CodeEditor";
+import { CodeEditor, MAX_DOC_LENGTH, type CodeEditorHandle } from "@/components/editor/CodeEditor";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { StatusBar } from "@/components/layout/StatusBar";
 import { Workspace } from "@/components/layout/Workspace";
@@ -11,14 +11,19 @@ import { AliasProvider, useAlias } from "@/lib/alias/AliasContext";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
 import { VimModeProvider } from "@/lib/vim/VimModeContext";
 import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
+import { formatPython } from "@/lib/format/ruffFormatter";
+import { useFormatterStatus } from "@/lib/format/useFormatterStatus";
 import { nextWorkspaceLayout, type WorkspaceLayout } from "@/lib/workspace/layout";
 
 function AppShellInner() {
   const { status, output, run, stop, clearOutput, fetchDataframePage } = usePythonRunner();
+  const formatterStatus = useFormatterStatus();
   const [roomId, setRoomId] = useState(() => resolveEditorRoomId());
   const [docLength, setDocLength] = useState(0);
   const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>("split");
   const codeRef = useRef("");
+  const editorRef = useRef<CodeEditorHandle>(null);
+  const [formatError, setFormatError] = useState<string | null>(null);
   const { alias } = useAlias();
   const {
     ytext,
@@ -67,7 +72,27 @@ function AppShellInner() {
     setWorkspaceLayout((prev) => nextWorkspaceLayout(prev));
   }, []);
 
-  useGlobalShortcuts({ onRun: handleRun, onStop: handleStop, onCycleLayout: handleCycleLayout });
+  const handleFormat = useCallback(async () => {
+    if (formatterStatus !== "ready") return;
+    const snapshot = codeRef.current;
+    setFormatError(null);
+    try {
+      const formatted = await formatPython(snapshot);
+      // Bail if the doc changed while formatting was in flight, so we don't
+      // clobber an edit (local or remote) that landed during the await.
+      if (codeRef.current !== snapshot || formatted === snapshot) return;
+      editorRef.current?.replaceContent(formatted);
+    } catch (error) {
+      setFormatError(error instanceof Error ? error.message : String(error));
+    }
+  }, [formatterStatus]);
+
+  useGlobalShortcuts({
+    onRun: handleRun,
+    onStop: handleStop,
+    onCycleLayout: handleCycleLayout,
+    onFormat: handleFormat,
+  });
 
   // a received broadcast runs locally (never re-broadcasts)
   useEffect(() => {
@@ -92,6 +117,8 @@ function AppShellInner() {
         status={status}
         onRun={handleRun}
         onStop={handleStop}
+        onFormat={handleFormat}
+        formatterStatus={formatterStatus}
         room={{ status: roomStatus, rejectedCode, participants }}
         workspaceLayout={workspaceLayout}
         onWorkspaceLayoutChange={setWorkspaceLayout}
@@ -100,10 +127,12 @@ function AppShellInner() {
         <Workspace
           layout={workspaceLayout}
           onLayoutChange={setWorkspaceLayout}
+          formatError={formatError}
           editor={
             ytext === null ? null : (
               <CodeEditor
                 key={roomId}
+                ref={editorRef}
                 initialDoc=""
                 ytext={ytext}
                 awareness={awareness}
@@ -111,6 +140,7 @@ function AppShellInner() {
                 onChange={(doc) => {
                   codeRef.current = doc;
                   setDocLength(doc.length);
+                  setFormatError(null);
                 }}
               />
             )
@@ -120,7 +150,12 @@ function AppShellInner() {
           }
         />
       </main>
-      <StatusBar runtimeStatus={status} docLength={docLength} maxDocLength={MAX_DOC_LENGTH} />
+      <StatusBar
+        runtimeStatus={status}
+        formatterStatus={formatterStatus}
+        docLength={docLength}
+        maxDocLength={MAX_DOC_LENGTH}
+      />
     </div>
   );
 }

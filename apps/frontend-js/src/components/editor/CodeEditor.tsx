@@ -6,7 +6,7 @@ import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lin
 import type { DecorationSet } from "@codemirror/view";
 import { vim } from "@replit/codemirror-vim";
 import { yCollab, yRemoteSelectionsTheme } from "y-codemirror.next";
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import type * as Y from "yjs";
 import type * as awarenessProtocol from "y-protocols/awareness";
 import { useVimMode } from "@/lib/vim/VimModeContext";
@@ -56,7 +56,14 @@ export interface CodeEditorProps {
   flashKey?: number;
 }
 
-export function CodeEditor({ initialDoc, onChange, ytext, awareness, flashKey }: CodeEditorProps) {
+export interface CodeEditorHandle {
+  replaceContent: (newDoc: string) => void;
+}
+
+export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEditor(
+  { initialDoc, onChange, ytext, awareness, flashKey },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
   const viewRef = useRef<EditorView | null>(null);
@@ -154,5 +161,19 @@ export function CodeEditor({ initialDoc, onChange, ytext, awareness, flashKey }:
     };
   }, []);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      replaceContent(newDoc) {
+        const view = viewRef.current;
+        if (!view) return;
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: newDoc },
+        });
+      },
+    }),
+    [],
+  );
+
   return <div ref={containerRef} aria-label="code editor" className="h-full w-full text-sm" />;
-}
+});

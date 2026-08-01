@@ -7,5 +7,6 @@ export interface ShortcutDef {
 export const SHORTCUTS: readonly ShortcutDef[] = [
   { id: "run", keys: "Ctrl/⌘ + Enter", description: "Run code" },
   { id: "stop", keys: "Esc", description: "Stop execution" },
+  { id: "format", keys: "Ctrl/⌘ + Shift + F", description: "Format code" },
   { id: "cycle-layout", keys: "Ctrl/⌘ + \\", description: "Cycle workspace layout" },
 ];

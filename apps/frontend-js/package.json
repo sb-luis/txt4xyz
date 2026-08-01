@@ -12,6 +12,7 @@
     "test:integration": "vitest run src/lib/collab/integration.test.ts"
   },
   "dependencies": {
+    "@astral-sh/ruff-wasm-web": "^0.16.1",
     "@codemirror/commands": "6.10.4",
     "@codemirror/lang-python": "6.2.1",
     "@codemirror/language": "6.12.4",

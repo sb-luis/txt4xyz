@@ -8,6 +8,7 @@ describe("Workspace", () => {
       <Workspace
         editor={<p>editor content</p>}
         output={<p>output content</p>}
+        formatError={null}
         layout="split"
         onLayoutChange={() => {}}
       />,
@@ -22,6 +23,7 @@ describe("Workspace", () => {
       <Workspace
         editor={<p>editor content</p>}
         output={<p>output content</p>}
+        formatError={null}
         layout="editor"
         onLayoutChange={() => {}}
       />,
@@ -35,11 +37,40 @@ describe("Workspace", () => {
       <Workspace
         editor={<p>editor content</p>}
         output={<p>output content</p>}
+        formatError={null}
         layout="output"
         onLayoutChange={() => {}}
       />,
     );
     expect(screen.queryByRole("region", { name: "editor" })).toBeNull();
     expect(screen.getByRole("region", { name: "output" })).toBeTruthy();
+  });
+
+  it("does not render a format error region when there is no error", () => {
+    render(
+      <Workspace
+        editor={<p>editor content</p>}
+        output={<p>output content</p>}
+        formatError={null}
+        layout="split"
+        onLayoutChange={() => {}}
+      />,
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("renders a format error inside the editor region, below the editor content", () => {
+    render(
+      <Workspace
+        editor={<p>editor content</p>}
+        output={<p>output content</p>}
+        formatError="SyntaxError: invalid syntax"
+        layout="split"
+        onLayoutChange={() => {}}
+      />,
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toBe("Format Error: SyntaxError: invalid syntax");
+    expect(screen.getByRole("region", { name: "editor" }).contains(alert)).toBe(true);
   });
 });

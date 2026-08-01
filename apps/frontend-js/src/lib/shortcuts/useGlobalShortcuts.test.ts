@@ -12,7 +12,8 @@ describe("useGlobalShortcuts", () => {
     const onRun = vi.fn();
     const onStop = vi.fn();
     const onCycleLayout = vi.fn();
-    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout }));
+    const onFormat = vi.fn();
+    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout, onFormat }));
 
     fireEvent.keyDown(document, { key: "Enter", ctrlKey: true });
     expect(onRun).toHaveBeenCalledTimes(1);
@@ -23,11 +24,23 @@ describe("useGlobalShortcuts", () => {
     expect(onStop).not.toHaveBeenCalled();
   });
 
+  it("fires onFormat on Ctrl/Cmd+Shift+F", () => {
+    const onRun = vi.fn();
+    const onStop = vi.fn();
+    const onCycleLayout = vi.fn();
+    const onFormat = vi.fn();
+    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout, onFormat }));
+
+    fireEvent.keyDown(document, { key: "f", shiftKey: true, ctrlKey: true });
+    expect(onFormat).toHaveBeenCalledTimes(1);
+  });
+
   it("fires onStop on Escape", () => {
     const onRun = vi.fn();
     const onStop = vi.fn();
     const onCycleLayout = vi.fn();
-    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout }));
+    const onFormat = vi.fn();
+    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout, onFormat }));
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onStop).toHaveBeenCalledTimes(1);
@@ -41,15 +54,18 @@ describe("useGlobalShortcuts", () => {
     const onRun = vi.fn();
     const onStop = vi.fn();
     const onCycleLayout = vi.fn();
-    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout }));
+    const onFormat = vi.fn();
+    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout, onFormat }));
 
     fireEvent.keyDown(document, { key: "Enter", ctrlKey: true });
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.keyDown(document, { key: "\\", metaKey: true });
+    fireEvent.keyDown(document, { key: "f", shiftKey: true, ctrlKey: true });
 
     expect(onRun).not.toHaveBeenCalled();
     expect(onStop).not.toHaveBeenCalled();
     expect(onCycleLayout).not.toHaveBeenCalled();
+    expect(onFormat).not.toHaveBeenCalled();
   });
 
   it("suppresses all shortcuts while a popover is open", () => {
@@ -60,7 +76,8 @@ describe("useGlobalShortcuts", () => {
     const onRun = vi.fn();
     const onStop = vi.fn();
     const onCycleLayout = vi.fn();
-    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout }));
+    const onFormat = vi.fn();
+    renderHook(() => useGlobalShortcuts({ onRun, onStop, onCycleLayout, onFormat }));
 
     fireEvent.keyDown(document, { key: "Escape" });
 

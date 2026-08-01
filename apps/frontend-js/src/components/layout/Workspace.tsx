@@ -14,6 +14,7 @@ import type { WorkspaceLayout } from "@/lib/workspace/layout";
 export interface WorkspaceProps {
   editor: ReactNode;
   output: ReactNode;
+  formatError: string | null;
   layout: WorkspaceLayout;
   onLayoutChange: (layout: WorkspaceLayout) => void;
 }
@@ -35,7 +36,7 @@ function useIsDesktop(): boolean {
   return isDesktop;
 }
 
-export function Workspace({ editor, output, layout, onLayoutChange }: WorkspaceProps) {
+export function Workspace({ editor, output, formatError, layout, onLayoutChange }: WorkspaceProps) {
   const isDesktop = useIsDesktop();
   const [editorPanel, setEditorPanel] = usePanelCallbackRef();
   const [outputPanel, setOutputPanel] = usePanelCallbackRef();
@@ -140,6 +141,14 @@ export function Workspace({ editor, output, layout, onLayoutChange }: WorkspaceP
             Editor
           </div>
           <div className="min-h-0 flex-1 overflow-auto">{editor}</div>
+          {formatError !== null && (
+            <div
+              role="alert"
+              className="max-h-32 shrink-0 overflow-auto whitespace-pre-wrap break-words border-t p-4 font-mono text-sm text-destructive"
+            >
+              <span className="font-semibold">Format Error:</span> {formatError}
+            </div>
+          )}
         </section>
       </ResizablePanel>
 

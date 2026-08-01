@@ -1,9 +1,10 @@
+import { createRef } from "react";
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { EditorView } from "@codemirror/view";
 import { VimModeProvider } from "@/lib/vim/VimModeContext";
-import { CodeEditor, type CodeEditorProps } from "./CodeEditor";
+import { CodeEditor, type CodeEditorHandle, type CodeEditorProps } from "./CodeEditor";
 
 function renderCodeEditor(props: CodeEditorProps) {
   return render(
@@ -130,5 +131,22 @@ describe("CodeEditor", () => {
     const contentEl = container.querySelector(".cm-content") as HTMLElement;
     const view = EditorView.findFromDOM(contentEl)!;
     expect(view.state.doc.length).toBe(100_045);
+  });
+
+  it("replaces the whole document via the imperative handle, syncing back into Y.Text", () => {
+    const doc = new Y.Doc();
+    const ytext = doc.getText("shared");
+    ytext.insert(0, "x=1");
+    const ref = createRef<CodeEditorHandle>();
+
+    render(
+      <VimModeProvider>
+        <CodeEditor ref={ref} initialDoc="" onChange={vi.fn()} ytext={ytext} />
+      </VimModeProvider>,
+    );
+
+    ref.current!.replaceContent("x = 1\n");
+
+    expect(ytext.toString()).toBe("x = 1\n");
   });
 });

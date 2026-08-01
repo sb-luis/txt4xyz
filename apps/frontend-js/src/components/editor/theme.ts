@@ -4,10 +4,20 @@ import { tags } from "@lezer/highlight";
 
 export const syntaxHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: "var(--syntax-keyword)" },
-  { tag: [tags.string, tags.special(tags.string)], color: "var(--syntax-string)" },
+  {
+    tag: [tags.string, tags.special(tags.string)],
+    color: "var(--syntax-string)",
+  },
   { tag: tags.number, color: "var(--syntax-number)" },
-  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "var(--syntax-comment)", fontStyle: "italic" },
-  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: "var(--syntax-function)" },
+  {
+    tag: [tags.comment, tags.lineComment, tags.blockComment],
+    color: "var(--syntax-comment)",
+    fontStyle: "italic",
+  },
+  {
+    tag: [tags.function(tags.variableName), tags.function(tags.propertyName)],
+    color: "var(--syntax-function)",
+  },
   { tag: [tags.operator, tags.punctuation], color: "var(--syntax-operator)" },
   { tag: tags.definition(tags.variableName), color: "var(--foreground)" },
   { tag: [tags.bool, tags.null, tags.self], color: "var(--syntax-number)" },
@@ -24,17 +34,17 @@ export const editorTheme = EditorView.theme({
   ".cm-scroller": {
     height: "100%",
   },
-  ".cm-content":{
+  ".cm-content": {
     padding: "1rem 1rem 0 0.5rem",
   },
-  ".cm-lineNumbers .cm-gutterElement":{
+  ".cm-lineNumbers .cm-gutterElement": {
     padding: "0 0 0 1rem",
   },
   ".cm-gutters": {
     backgroundColor: "transparent",
     border: "none",
   },
-  // An opaque bg sits in front of the selectionBackground layer and would hide the selection 
+  // An opaque bg sits in front of the selectionBackground layer and would hide the selection
   // so this must stay partially transparent to let the selection show through.
   ".cm-activeLine": {
     backgroundColor: "color-mix(in srgb, var(--secondary) 30%, transparent)",
