@@ -51,12 +51,18 @@ class FakeSocket {
 }
 
 beforeEach(() => {
+  // The awareness broadcast is coalesced behind a real 50ms setTimeout
+  // (provider.ts's AWARENESS_COALESCE_MS). Without fake timers, whether it
+  // fires inside a test's microtask-flush window depends on wall-clock
+  // scheduling, making socket-send-count assertions flaky under CI load.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   vi.stubGlobal("Worker", FakeWorker);
   vi.stubGlobal("WebSocket", FakeSocket);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   window.location.hash = "";
   lastFakeSocket = null;
   lastFakeWorker = null;
