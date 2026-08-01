@@ -34,8 +34,10 @@ export const editorTheme = EditorView.theme({
     backgroundColor: "transparent",
     border: "none",
   },
+  // An opaque bg sits in front of the selectionBackground layer and would hide the selection 
+  // so this must stay partially transparent to let the selection show through.
   ".cm-activeLine": {
-    backgroundColor: "var(--secondary)",
+    backgroundColor: "color-mix(in srgb, var(--secondary) 30%, transparent)",
   },
   ".cm-activeLineGutter": {
     backgroundColor: "var(--secondary)",
