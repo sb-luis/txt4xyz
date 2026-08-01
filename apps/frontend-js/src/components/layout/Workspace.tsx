@@ -152,7 +152,7 @@ export function Workspace({ editor, output, formatError, layout, onLayoutChange 
         </section>
       </ResizablePanel>
 
-      <ResizableHandle disabled={isAnimating} />
+      <ResizableHandle withHandle disabled={isAnimating} />
 
       <ResizablePanel
         id="output"
