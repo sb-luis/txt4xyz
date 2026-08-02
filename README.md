@@ -31,6 +31,7 @@ a message, stores a document, or runs your code, late joiners sync from each oth
 
 **No database.** A late joiner syncs from its *peers*, not the server, so
   the relay holds no document state. When the last member leaves, the room ceases to exist.
+
 **Code executes client-side in a web worker,** each
   run gets a fresh Python namespace.
 
