@@ -34,11 +34,12 @@ afterEach(() => {
 });
 
 describe("App", () => {
-  it("renders the homepage with an editor CTA at the root path", () => {
+  it("renders the homepage with offline and collab CTAs at the root path", () => {
     window.history.pushState({}, "", "/");
     render(<App />);
     expect(screen.getByText("txt4xyz")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /open the editor/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /collab/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /offline/i })).toBeTruthy();
     expect(screen.queryByRole("region", { name: "editor" })).toBeNull();
   });
 
@@ -47,5 +48,13 @@ describe("App", () => {
     render(<App />);
     expect(screen.getByRole("region", { name: "editor" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "output" })).toBeTruthy();
+  });
+
+  it("renders the editor with output pane at /offline, without room participants", () => {
+    window.history.pushState({}, "", "/offline");
+    render(<App />);
+    expect(screen.getByRole("region", { name: "editor" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "output" })).toBeTruthy();
+    expect(screen.queryByLabelText(/^room:/i)).toBeNull();
   });
 });

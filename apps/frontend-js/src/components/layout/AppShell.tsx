@@ -14,14 +14,19 @@ import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
 import { formatPython } from "@/lib/format/ruffFormatter";
 import { useFormatterStatus } from "@/lib/format/useFormatterStatus";
 import { nextWorkspaceLayout, type WorkspaceLayout } from "@/lib/workspace/layout";
+import { createDebouncedOfflineDocWriter, readOfflineDoc } from "@/lib/persistence/localStore";
 
-function AppShellInner() {
+export type AppShellMode = "collab" | "offline";
+
+function AppShellInner({ mode }: { mode: AppShellMode }) {
   const { status, output, run, stop, clearOutput, fetchDataframePage } = usePythonRunner();
   const formatterStatus = useFormatterStatus();
-  const [roomId, setRoomId] = useState(() => resolveEditorRoomId());
-  const [docLength, setDocLength] = useState(0);
+  const [roomId, setRoomId] = useState(() => (mode === "collab" ? resolveEditorRoomId() : null));
+  const [initialOfflineDoc] = useState(() => (mode === "offline" ? (readOfflineDoc() ?? "") : ""));
+  const offlineWriterRef = useRef(mode === "offline" ? createDebouncedOfflineDocWriter() : null);
+  const [docLength, setDocLength] = useState(() => initialOfflineDoc.length);
   const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayout>("split");
-  const codeRef = useRef("");
+  const codeRef = useRef(initialOfflineDoc);
   const editorRef = useRef<CodeEditorHandle>(null);
   const [formatError, setFormatError] = useState<string | null>(null);
   const { alias } = useAlias();
@@ -40,14 +45,21 @@ function AppShellInner() {
 
   // Without this, a fragment change (back/forward, or pasting a room link into
   // an open tab) never reloads the page, so the app keeps relaying into the
-  // room it first joined while the URL claims a different one.
+  // room it first joined while the URL claims a different one. Offline mode
+  // has no room to resync against.
   useEffect(() => {
+    if (mode !== "collab") return;
     const onHashChange = () => {
       const id = resolveEditorRoomId();
       setRoomId((prev) => (prev === id ? prev : id));
     };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
+  }, [mode]);
+
+  useEffect(() => {
+    const writer = offlineWriterRef.current;
+    return () => writer?.cancel();
   }, []);
 
   const runLocally = useCallback(() => {
@@ -119,7 +131,7 @@ function AppShellInner() {
         onStop={handleStop}
         onFormat={handleFormat}
         formatterStatus={formatterStatus}
-        room={{ status: roomStatus, rejectedCode, participants }}
+        room={mode === "offline" ? undefined : { status: roomStatus, rejectedCode, participants }}
         workspaceLayout={workspaceLayout}
         onWorkspaceLayoutChange={setWorkspaceLayout}
       />
@@ -129,7 +141,20 @@ function AppShellInner() {
           onLayoutChange={setWorkspaceLayout}
           formatError={formatError}
           editor={
-            ytext === null ? null : (
+            mode === "offline" ? (
+              <CodeEditor
+                key="offline"
+                ref={editorRef}
+                initialDoc={initialOfflineDoc}
+                flashKey={flashKey}
+                onChange={(doc) => {
+                  codeRef.current = doc;
+                  setDocLength(doc.length);
+                  setFormatError(null);
+                  offlineWriterRef.current?.schedule(doc);
+                }}
+              />
+            ) : ytext === null ? null : (
               <CodeEditor
                 key={roomId}
                 ref={editorRef}
@@ -160,12 +185,12 @@ function AppShellInner() {
   );
 }
 
-export function AppShell() {
+export function AppShell({ mode = "collab" }: { mode?: AppShellMode } = {}) {
   return (
     <ThemeProvider>
       <VimModeProvider>
         <AliasProvider>
-          <AppShellInner />
+          <AppShellInner mode={mode} />
         </AliasProvider>
       </VimModeProvider>
     </ThemeProvider>

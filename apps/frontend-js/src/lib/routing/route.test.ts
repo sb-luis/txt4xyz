@@ -6,10 +6,15 @@ describe("resolveRoute", () => {
     expect(resolveRoute("/edit")).toBe("edit");
   });
 
+  it("maps /offline to the offline route", () => {
+    expect(resolveRoute("/offline")).toBe("offline");
+  });
+
   it("maps every other path to the home route", () => {
     expect(resolveRoute("/")).toBe("home");
     expect(resolveRoute("/whatever")).toBe("home");
     expect(resolveRoute("/edit/")).toBe("home");
+    expect(resolveRoute("/offline/")).toBe("home");
   });
 });
 

@@ -79,6 +79,33 @@ export function writeStoredRoomDoc(roomId: string, doc: string): void {
   touchRoomIndex(roomId);
 }
 
+const OFFLINE_DOC_KEY = "txt4xyz:offline-doc";
+
+export function readOfflineDoc(): string | null {
+  return readStoredDoc(OFFLINE_DOC_KEY);
+}
+
+export function createDebouncedOfflineDocWriter(delayMs = DEBOUNCE_MS): {
+  schedule: (doc: string) => void;
+  cancel: () => void;
+} {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  return {
+    schedule(doc: string) {
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        writeStoredDoc(OFFLINE_DOC_KEY, doc);
+      }, delayMs);
+    },
+    cancel() {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+    },
+  };
+}
+
 export function createDebouncedRoomDocWriter(
   roomId: string,
   delayMs = DEBOUNCE_MS,

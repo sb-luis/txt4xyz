@@ -17,7 +17,7 @@ export interface AppHeaderProps {
   onStop: () => void;
   onFormat: () => void;
   formatterStatus: FormatterStatus;
-  room: { status: ConnectionStatus; rejectedCode: number | null; participants: Participant[] };
+  room?: { status: ConnectionStatus; rejectedCode: number | null; participants: Participant[] };
   workspaceLayout: WorkspaceLayout;
   onWorkspaceLayoutChange: (layout: WorkspaceLayout) => void;
 }
@@ -57,7 +57,7 @@ export function AppHeader({
         </ToggleGroupItem>
       </ToggleGroup>
       <div className="flex shrink-0 items-center gap-3">
-        <ParticipantsList room={room} />
+        {room && <ParticipantsList room={room} />}
         <FormatButton onClick={onFormat} disabled={formatterStatus !== "ready"} />
         <RunStopButton status={status} onRun={onRun} onStop={onStop} />
         <SettingsButton onClick={() => setSettingsOpen(true)} />

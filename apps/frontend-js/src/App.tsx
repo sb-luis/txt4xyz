@@ -3,7 +3,10 @@ import { Homepage } from "@/components/home/Homepage";
 import { currentRoute } from "@/lib/routing/route";
 
 function App() {
-  return currentRoute() === "edit" ? <AppShell /> : <Homepage />;
+  const route = currentRoute();
+  if (route === "edit") return <AppShell mode="collab" />;
+  if (route === "offline") return <AppShell mode="offline" />;
+  return <Homepage />;
 }
 
 export default App;
