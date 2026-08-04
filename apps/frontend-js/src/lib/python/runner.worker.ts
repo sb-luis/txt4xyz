@@ -344,6 +344,7 @@ export async function runTraced(pyodide: PyodideInterface, id: string, code: str
 
   let runError: unknown = null;
   try {
+    await pyodide.loadPackagesFromImports(code);
     await (ns.get("_txt4xyz_run_traced")(code) as Promise<unknown>);
   } catch (err) {
     runError = err;
