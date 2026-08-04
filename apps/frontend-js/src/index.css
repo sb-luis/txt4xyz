@@ -181,6 +181,10 @@
   animation: run-flash-fade 350ms ease-out;
 }
 
+.cm-current-line {
+  background-color: color-mix(in oklch, var(--flash) 45%, transparent);
+}
+
 html,
 body,
 #root {

@@ -2,8 +2,38 @@ import { loadPyodide, version, type PyodideInterface } from "pyodide";
 import {
   parseMainToWorkerMessage,
   type DisplayPayload,
+  type StepEvent,
   type WorkerToMainMessage,
 } from "./protocol";
+
+// Exceeding this raises from inside the traced frame itself (see
+// TRACE_RUNNER) rather than truncating silently, so a runaway loop surfaces
+// as a normal run-error the user watches happen.
+const MAX_TRACE_EVENTS = 5000;
+
+// PyCF_ALLOW_TOP_LEVEL_AWAIT + eval(code_obj) mirrors Pyodide's own console so
+// a bare top-level `await` still works. The trace function is filtered to
+// frames compiled from this exact source (co_filename '<user_code>') so line
+// events never fire for code inside pandas/numpy/etc.
+const TRACE_RUNNER = `
+import sys, ast
+
+async def _txt4xyz_run_traced(source):
+    code_obj = compile(source, '<user_code>', 'exec', flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+    def _trace(frame, event, arg):
+        if frame.f_code.co_filename != '<user_code>':
+            return None
+        if event == 'line' and _on_trace_line(frame.f_lineno):
+            raise RuntimeError('stopped after ${MAX_TRACE_EVENTS} steps -- did you write an infinite loop?')
+        return _trace
+    sys.settrace(_trace)
+    try:
+        result = eval(code_obj, globals())
+        if result is not None:
+            await result
+    finally:
+        sys.settrace(None)
+`;
 
 const INIT_MODULE = [
   "import os, sys, types",
@@ -177,20 +207,74 @@ function post(message: WorkerToMainMessage) {
 
 let currentRunId: string | null = null;
 
+// While `recording` is true (runTraced), output is buffered per line instead
+// of streamed, so it can be attached to the step that produced it.
+let recording = false;
+let traceEventCount = 0;
+let pendingLine: number | null = null;
+let pendingStdout: string[] = [];
+let pendingStderr: string[] = [];
+let pendingDisplay: DisplayPayload[] = [];
+let recordedSteps: StepEvent[] = [];
+
+function flushPendingStep() {
+  if (pendingLine === null) return;
+  recordedSteps.push({
+    line: pendingLine,
+    stdout: pendingStdout,
+    stderr: pendingStderr,
+    display: pendingDisplay,
+  });
+  pendingStdout = [];
+  pendingStderr = [];
+  pendingDisplay = [];
+}
+
+// Bound into the traced namespace as `_on_trace_line`. Returns true once the
+// step cap is hit, so Python can raise from inside the traced frame itself.
+function onTraceLine(lineno: number): boolean {
+  flushPendingStep();
+  pendingLine = lineno;
+  traceEventCount += 1;
+  return traceEventCount > MAX_TRACE_EVENTS;
+}
+
+// Exported only so tests can wire the same capture path into a standalone
+// Pyodide instance -- production code always goes through `init()` below.
+export function handleStdoutForTests(line: string) {
+  handleStdout(line);
+}
+export function handleStderrForTests(line: string) {
+  handleStderr(line);
+}
+
 function handleStdout(line: string) {
   if (currentRunId === null) return;
+  if (recording) {
+    pendingStdout.push(line);
+    return;
+  }
   post({ type: "stdout", id: currentRunId, line });
 }
 
 function handleStderr(line: string) {
   if (currentRunId === null) return;
+  if (recording) {
+    pendingStderr.push(line);
+    return;
+  }
   post({ type: "stderr", id: currentRunId, line });
 }
 
 function handleDisplay(jsonPayload: string) {
   if (currentRunId === null) return;
   const parsed = JSON.parse(jsonPayload) as Record<string, unknown>;
-  post({ type: "display", id: currentRunId, display: toCamelDisplay(parsed) });
+  const display = toCamelDisplay(parsed);
+  if (recording) {
+    pendingDisplay.push(display);
+    return;
+  }
+  post({ type: "display", id: currentRunId, display });
 }
 
 async function init(): Promise<PyodideInterface> {
@@ -228,6 +312,54 @@ export async function run(pyodide: PyodideInterface, id: string, code: string) {
     // A broken plot capture must not mask the run's actual result/error
     handleStderr(`[plot capture failed] ${String(err)}`);
   }
+  if (runError !== null) {
+    post({ type: "run-error", id, traceback: String(runError) });
+  } else {
+    post({ type: "run-result", id });
+  }
+  ns.destroy();
+  currentRunId = null;
+}
+
+export async function runTraced(pyodide: PyodideInterface, id: string, code: string) {
+  currentRunId = id;
+  pyodide.runPython(PERSISTENT_SETUP);
+  // Dataframes displayed by the previous run become unreachable the moment
+  // a new run starts -- their variables don't survive either.
+  pyodide.runPython("_dataframe_registry.clear()");
+  const ns = pyodide.runPython(INIT_MODULE);
+  ns.set("_emit_display", handleDisplay);
+  ns.set("_dataframe_registry", pyodide.globals.get("_dataframe_registry"));
+  ns.set("_on_trace_line", onTraceLine);
+  pyodide.runPython(DEFINE_DISPLAY_HELPERS, { globals: ns });
+  pyodide.runPython(TRACE_RUNNER, { globals: ns });
+
+  recording = true;
+  traceEventCount = 0;
+  pendingLine = null;
+  pendingStdout = [];
+  pendingStderr = [];
+  pendingDisplay = [];
+  recordedSteps = [];
+
+  let runError: unknown = null;
+  try {
+    await (ns.get("_txt4xyz_run_traced")(code) as Promise<unknown>);
+  } catch (err) {
+    runError = err;
+  }
+  try {
+    pyodide.runPython(CAPTURE_PLOTS, { globals: ns });
+  } catch (err) {
+    // A broken plot capture must not mask the run's actual result/error
+    handleStderr(`[plot capture failed] ${String(err)}`);
+  }
+  // Flush after CAPTURE_PLOTS so any plot emitted from the last executed line
+  // lands in that line's step rather than being dropped when recording ends.
+  flushPendingStep();
+  recording = false;
+
+  post({ type: "run-timeline", id, steps: recordedSteps });
   if (runError !== null) {
     post({ type: "run-error", id, traceback: String(runError) });
   } else {
@@ -284,6 +416,15 @@ self.onmessage = (event: MessageEvent<unknown>) => {
     const { id, code } = message;
     void ready.then(
       (pyodide) => run(pyodide, id, code),
+      () => {},
+    );
+    return;
+  }
+
+  if (message.type === "run-traced") {
+    const { id, code } = message;
+    void ready.then(
+      (pyodide) => runTraced(pyodide, id, code),
       () => {},
     );
     return;

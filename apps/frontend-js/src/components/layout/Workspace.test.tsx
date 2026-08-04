@@ -6,7 +6,7 @@ describe("Workspace", () => {
   it("renders the editor and output regions in split layout", () => {
     render(
       <Workspace
-        editor={<p>editor content</p>}
+        editor={<p>editor content</p>} controls={<div />}
         output={<p>output content</p>}
         formatError={null}
         layout="split"
@@ -21,7 +21,7 @@ describe("Workspace", () => {
   it("hides the output region from the accessibility tree in full-editor layout", () => {
     render(
       <Workspace
-        editor={<p>editor content</p>}
+        editor={<p>editor content</p>} controls={<div />}
         output={<p>output content</p>}
         formatError={null}
         layout="editor"
@@ -35,7 +35,7 @@ describe("Workspace", () => {
   it("hides the editor region from the accessibility tree in full-output layout", () => {
     render(
       <Workspace
-        editor={<p>editor content</p>}
+        editor={<p>editor content</p>} controls={<div />}
         output={<p>output content</p>}
         formatError={null}
         layout="output"
@@ -49,7 +49,7 @@ describe("Workspace", () => {
   it("does not render a format error region when there is no error", () => {
     render(
       <Workspace
-        editor={<p>editor content</p>}
+        editor={<p>editor content</p>} controls={<div />}
         output={<p>output content</p>}
         formatError={null}
         layout="split"
@@ -62,7 +62,7 @@ describe("Workspace", () => {
   it("renders a format error inside the editor region, below the editor content", () => {
     render(
       <Workspace
-        editor={<p>editor content</p>}
+        editor={<p>editor content</p>} controls={<div />}
         output={<p>output content</p>}
         formatError="SyntaxError: invalid syntax"
         layout="split"

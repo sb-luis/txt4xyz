@@ -14,6 +14,7 @@ import type { WorkspaceLayout } from "@/lib/workspace/layout";
 export interface WorkspaceProps {
   editor: ReactNode;
   output: ReactNode;
+  controls: ReactNode;
   formatError: string | null;
   layout: WorkspaceLayout;
   onLayoutChange: (layout: WorkspaceLayout) => void;
@@ -36,7 +37,7 @@ function useIsDesktop(): boolean {
   return isDesktop;
 }
 
-export function Workspace({ editor, output, formatError, layout, onLayoutChange }: WorkspaceProps) {
+export function Workspace({ editor, output, controls, formatError, layout, onLayoutChange }: WorkspaceProps) {
   const isDesktop = useIsDesktop();
   const [editorPanel, setEditorPanel] = usePanelCallbackRef();
   const [outputPanel, setOutputPanel] = usePanelCallbackRef();
@@ -116,67 +117,70 @@ export function Workspace({ editor, output, formatError, layout, onLayoutChange 
   const outputCollapsed = layout === "editor";
 
   return (
-    <ResizablePanelGroup
-      orientation={isDesktop ? "horizontal" : "vertical"}
-      onLayoutChanged={handleLayoutChanged}
-      className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-background shadow-sm"
-    >
-      <ResizablePanel
-        id="editor"
-        defaultSize={60}
-        minSize={100}
-        collapsible
-        collapsedSize={0}
-        panelRef={setEditorPanel}
-        elementRef={editorElRef}
-        className="flex min-h-0 min-w-0 flex-col overflow-hidden"
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+      {controls}
+      <ResizablePanelGroup
+        orientation={isDesktop ? "horizontal" : "vertical"}
+        onLayoutChanged={handleLayoutChanged}
+        className="min-h-0 flex-1 overflow-hidden"
       >
-        <section
-          aria-label="editor"
-          aria-hidden={editorCollapsed}
-          inert={editorCollapsed}
-          className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+        <ResizablePanel
+          id="editor"
+          defaultSize={60}
+          minSize={100}
+          collapsible
+          collapsedSize={0}
+          panelRef={setEditorPanel}
+          elementRef={editorElRef}
+          className="flex min-h-0 min-w-0 flex-col overflow-hidden"
         >
-          <div className="shrink-0 border-b border-border px-4 py-2 text-sm font-medium">
-            Editor
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">{editor}</div>
-          {formatError !== null && (
-            <div
-              role="alert"
-              className="max-h-32 shrink-0 overflow-auto whitespace-pre-wrap break-words border-t p-4 font-mono text-sm text-destructive"
-            >
-              <span className="font-semibold">Format Error:</span> {formatError}
+          <section
+            aria-label="editor"
+            aria-hidden={editorCollapsed}
+            inert={editorCollapsed}
+            className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+          >
+            <div className="shrink-0 border-b border-border px-4 py-2 text-sm font-medium">
+              Editor
             </div>
-          )}
-        </section>
-      </ResizablePanel>
+            <div className="min-h-0 flex-1 overflow-auto">{editor}</div>
+            {formatError !== null && (
+              <div
+                role="alert"
+                className="max-h-32 shrink-0 overflow-auto whitespace-pre-wrap break-words border-t p-4 font-mono text-sm text-destructive"
+              >
+                <span className="font-semibold">Format Error:</span> {formatError}
+              </div>
+            )}
+          </section>
+        </ResizablePanel>
 
-      <ResizableHandle withHandle disabled={isAnimating} />
+        <ResizableHandle withHandle disabled={isAnimating} />
 
-      <ResizablePanel
-        id="output"
-        defaultSize={40}
-        minSize={100}
-        collapsible
-        collapsedSize={0}
-        panelRef={setOutputPanel}
-        elementRef={outputElRef}
-        className="flex min-h-0 min-w-0 flex-col overflow-hidden"
-      >
-        <section
-          id="output-panel"
-          aria-label="output"
-          aria-hidden={outputCollapsed}
-          inert={outputCollapsed}
-          className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+        <ResizablePanel
+          id="output"
+          defaultSize={40}
+          minSize={100}
+          collapsible
+          collapsedSize={0}
+          panelRef={setOutputPanel}
+          elementRef={outputElRef}
+          className="flex min-h-0 min-w-0 flex-col overflow-hidden"
         >
-          <div className="shrink-0 border-b border-border px-4 py-2 text-sm font-medium">
-            Output
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto p-4">{output}</div>
-        </section>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+          <section
+            id="output-panel"
+            aria-label="output"
+            aria-hidden={outputCollapsed}
+            inert={outputCollapsed}
+            className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+          >
+            <div className="shrink-0 border-b border-border px-4 py-2 text-sm font-medium">
+              Output
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-4">{output}</div>
+          </section>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
   );
 }

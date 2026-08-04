@@ -12,6 +12,7 @@ const thisDir = thisFilePath.slice(0, thisFilePath.lastIndexOf("/"));
 const localIndexURL = `${thisDir}/../../../node_modules/pyodide/`;
 
 let run: typeof import("./runner.worker").run;
+let runTraced: typeof import("./runner.worker").runTraced;
 let pyodide: PyodideInterface;
 
 beforeAll(async () => {
@@ -24,7 +25,16 @@ beforeAll(async () => {
 
   const mod = await import("./runner.worker");
   run = mod.run;
-  pyodide = await loadPyodide({ indexURL: localIndexURL });
+  runTraced = mod.runTraced;
+  // Must wire the same stdout/stderr callbacks the worker's own `init()` uses
+  // internally, or this standalone instance's print() output goes straight to
+  // the process's stdout instead of through the worker's postMessage/buffering
+  // path that these tests assert against.
+  pyodide = await loadPyodide({
+    indexURL: localIndexURL,
+    stdout: mod.handleStdoutForTests,
+    stderr: mod.handleStderrForTests,
+  });
 }, 60_000);
 
 // Each run executes in a fresh module installed as `__main__`. These three
@@ -188,4 +198,62 @@ describe("run", () => {
     ) as string;
     expect(JSON.parse(staleJson)).toEqual({ error: "expired" });
   }, 20_000);
+});
+
+describe("runTraced", () => {
+  it("records one step per line of user code, in order, with its own stdout", async () => {
+    const postMessage = self.postMessage as unknown as ReturnType<typeof vi.fn>;
+    postMessage.mockClear();
+
+    await runTraced(pyodide, "t1", ["x = 1", "print(x)", "y = x + 1"].join("\n"));
+
+    const calls = postMessage.mock.calls.map((call) => call[0]);
+    const timeline = calls.find(
+      (call) => (call as { type: string }).type === "run-timeline",
+    ) as { type: string; id: string; steps: unknown[] };
+
+    expect(timeline.steps).toEqual([
+      { line: 1, stdout: [], stderr: [], display: [] },
+      { line: 2, stdout: ["1"], stderr: [], display: [] },
+      { line: 3, stdout: [], stderr: [], display: [] },
+    ]);
+    expect(calls).toContainEqual({ type: "run-result", id: "t1" });
+  }, 20_000);
+
+  it("does not emit line events for lines inside library calls, only the user's own code", async () => {
+    const postMessage = self.postMessage as unknown as ReturnType<typeof vi.fn>;
+    postMessage.mockClear();
+
+    await runTraced(
+      pyodide,
+      "t2",
+      ["import json", "json.dumps({'a': 1})", "print('done')"].join("\n"),
+    );
+
+    const calls = postMessage.mock.calls.map((call) => call[0]);
+    const timeline = calls.find(
+      (call) => (call as { type: string }).type === "run-timeline",
+    ) as { steps: { line: number }[] };
+
+    expect(timeline.steps.map((s) => s.line)).toEqual([1, 2, 3]);
+  }, 20_000);
+
+  it("hits the step cap on a runaway loop and surfaces a readable run-error, with the partial timeline recorded", async () => {
+    const postMessage = self.postMessage as unknown as ReturnType<typeof vi.fn>;
+    postMessage.mockClear();
+
+    await runTraced(pyodide, "t3", ["while True:", "    pass"].join("\n"));
+
+    const calls = postMessage.mock.calls.map((call) => call[0]);
+    const timeline = calls.find(
+      (call) => (call as { type: string }).type === "run-timeline",
+    ) as { steps: unknown[] };
+    const error = calls.find((call) => (call as { type: string }).type === "run-error") as {
+      traceback: string;
+    };
+
+    expect(timeline.steps.length).toBeGreaterThan(1000);
+    expect(error.traceback).toContain("stopped after 5000 steps");
+    expect(calls.some((call) => (call as { type: string }).type === "run-result")).toBe(false);
+  }, 30_000);
 });

@@ -1,10 +1,8 @@
 import { useState } from "react";
-import type { RunnerStatus } from "@/lib/python/runner";
 import type { ConnectionStatus } from "@/lib/collab/provider";
 import type { Participant } from "@/lib/collab/useRoom";
 import { ParticipantsList } from "@/components/collab/ParticipantsList";
 import { FormatButton } from "@/components/ui/FormatButton";
-import { RunStopButton } from "@/components/ui/RunStopButton";
 import { SettingsButton } from "@/components/settings/SettingsButton";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -12,9 +10,6 @@ import type { FormatterStatus } from "@/lib/format/useFormatterStatus";
 import type { WorkspaceLayout } from "@/lib/workspace/layout";
 
 export interface AppHeaderProps {
-  status: RunnerStatus;
-  onRun: () => void;
-  onStop: () => void;
   onFormat: () => void;
   formatterStatus: FormatterStatus;
   room?: { status: ConnectionStatus; rejectedCode: number | null; participants: Participant[] };
@@ -23,9 +18,6 @@ export interface AppHeaderProps {
 }
 
 export function AppHeader({
-  status,
-  onRun,
-  onStop,
   onFormat,
   formatterStatus,
   room,
@@ -59,7 +51,6 @@ export function AppHeader({
       <div className="flex shrink-0 items-center gap-3">
         {room && <ParticipantsList room={room} />}
         <FormatButton onClick={onFormat} disabled={formatterStatus !== "ready"} />
-        <RunStopButton status={status} onRun={onRun} onStop={onStop} />
         <SettingsButton onClick={() => setSettingsOpen(true)} />
       </div>
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

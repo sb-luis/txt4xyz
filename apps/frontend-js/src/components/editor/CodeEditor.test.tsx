@@ -106,6 +106,34 @@ describe("CodeEditor", () => {
     expect(container.querySelectorAll(".cm-run-flash")).toHaveLength(3);
   });
 
+  it("decorates exactly the given line as current, moving and clearing as the prop changes", () => {
+    const { container, rerender } = render(
+      <VimModeProvider>
+        <CodeEditor initialDoc={"a\nb\nc"} onChange={vi.fn()} currentLine={null} />
+      </VimModeProvider>,
+    );
+
+    expect(container.querySelectorAll(".cm-current-line")).toHaveLength(0);
+
+    rerender(
+      <VimModeProvider>
+        <CodeEditor initialDoc={"a\nb\nc"} onChange={vi.fn()} currentLine={2} />
+      </VimModeProvider>,
+    );
+
+    const decorated = container.querySelectorAll(".cm-current-line");
+    expect(decorated).toHaveLength(1);
+    expect(decorated[0].textContent).toBe("b");
+
+    rerender(
+      <VimModeProvider>
+        <CodeEditor initialDoc={"a\nb\nc"} onChange={vi.fn()} currentLine={null} />
+      </VimModeProvider>,
+    );
+
+    expect(container.querySelectorAll(".cm-current-line")).toHaveLength(0);
+  });
+
   it("does not flash on initial mount even when flashKey is already set", () => {
     const { container } = renderCodeEditor({
       initialDoc: "a\nb",

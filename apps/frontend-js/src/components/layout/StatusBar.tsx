@@ -17,22 +17,26 @@ const FORMATTER_STATUS_LABEL: Record<FormatterStatus, string> = {
 export interface StatusBarProps {
   runtimeStatus: RunnerStatus;
   formatterStatus: FormatterStatus;
-  docLength: number;
-  maxDocLength: number;
+  docBytes: number;
+  stepNumber: number | null;
 }
 
-function formatCount(value: number): string {
-  return value >= 1000 ? `${Math.floor(value / 1000)}K` : value.toLocaleString();
+// Bytes, not characters. Shows only the current size, never the (real) cap.
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  return `${kb % 1 === 0 ? kb : kb.toFixed(1)} KB`;
 }
 
-export function StatusBar({ runtimeStatus, formatterStatus, docLength, maxDocLength }: StatusBarProps) {
+export function StatusBar({ runtimeStatus, formatterStatus, docBytes, stepNumber }: StatusBarProps) {
   return (
     <footer className="flex shrink-0 items-center justify-between gap-4 px-4 py-2 text-xs text-muted-foreground">
       <span>
         {RUNTIME_STATUS_LABEL[runtimeStatus]} · {FORMATTER_STATUS_LABEL[formatterStatus]}
       </span>
-      <span>
-        {formatCount(docLength)} / {formatCount(maxDocLength)} chars
+      <span className="flex items-center gap-4">
+        {stepNumber !== null && <span>Step {stepNumber}</span>}
+        <span>{formatBytes(docBytes)}</span>
       </span>
     </footer>
   );

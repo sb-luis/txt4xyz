@@ -17,9 +17,12 @@ class FakeWorker {
   }
   postMessage(message: unknown) {
     const { type, id } = message as { type: string; id: string };
-    if (type !== "run") return;
+    if (type !== "run" && type !== "run-traced") return;
     this.runCalls.push(id);
     queueMicrotask(() => {
+      if (type === "run-traced") {
+        this.onmessage?.({ data: { type: "run-timeline", id, steps: [] } } as MessageEvent<unknown>);
+      }
       this.onmessage?.({ data: { type: "run-result", id } } as MessageEvent<unknown>);
     });
   }
@@ -106,11 +109,11 @@ describe("AppShell", () => {
       await flushMicrotasks();
     });
 
-    const runButton = screen.getByRole("button", { name: "Run" });
-    expect((runButton as HTMLButtonElement).disabled).toBe(false);
+    const playButton = screen.getByRole("button", { name: "play" });
+    expect((playButton as HTMLButtonElement).disabled).toBe(false);
 
     const sentBefore = lastFakeSocket!.sent.length;
-    fireEvent.click(runButton);
+    fireEvent.click(playButton);
 
     await act(async () => {
       await flushMicrotasks();

@@ -36,6 +36,26 @@ const runFlashField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+const setCurrentLine = StateEffect.define<number | null>();
+
+const currentLineField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, tr) {
+    for (const effect of tr.effects) {
+      if (!effect.is(setCurrentLine)) continue;
+      if (effect.value === null || effect.value < 1 || effect.value > tr.state.doc.lines) {
+        return Decoration.none;
+      }
+      const line = tr.state.doc.line(effect.value);
+      return Decoration.set([Decoration.line({ class: "cm-current-line" }).range(line.from)]);
+    }
+    return decorations.map(tr.changes);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
 // Bounds editor and Pyodide performance and localStorage usage, not the wire:
 // Yjs sync payload size tracks edit history, not document length.
 export const MAX_DOC_LENGTH = 100_000;
@@ -54,6 +74,7 @@ export interface CodeEditorProps {
   ytext?: Y.Text;
   awareness?: awarenessProtocol.Awareness | null;
   flashKey?: number;
+  currentLine?: number | null;
 }
 
 export interface CodeEditorHandle {
@@ -61,7 +82,7 @@ export interface CodeEditorHandle {
 }
 
 export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEditor(
-  { initialDoc, onChange, ytext, awareness, flashKey },
+  { initialDoc, onChange, ytext, awareness, flashKey, currentLine },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -110,6 +131,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
         EditorView.lineWrapping,
         enforceDocLengthCap,
         runFlashField,
+        currentLineField,
         ...(ytext ? [yCollab(ytext, awareness ?? null)] : []),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -160,6 +182,11 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
       if (flashTimerRef.current !== null) clearTimeout(flashTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (currentLine === undefined) return;
+    viewRef.current?.dispatch({ effects: setCurrentLine.of(currentLine) });
+  }, [currentLine]);
 
   useImperativeHandle(
     ref,

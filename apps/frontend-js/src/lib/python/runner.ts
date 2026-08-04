@@ -1,4 +1,4 @@
-import { parseWorkerToMainMessage, type DataframeSort } from "./protocol";
+import { parseWorkerToMainMessage, type DataframeSort, type StepEvent } from "./protocol";
 
 export type RunnerStatus = "loading" | "ready" | "running" | "error";
 
@@ -28,6 +28,11 @@ export interface DataframePage {
 export interface PythonRunnerCallbacks {
   onStatusChange: (status: RunnerStatus) => void;
   onOutput: (entry: OutputEntry) => void;
+  // Fired once a traced run finishes recording, with its full step timeline.
+  onTimeline?: (steps: StepEvent[]) => void;
+  // Fired instead of onOutput on a traced run's error, so playback can reveal
+  // it as the timeline's trailing step rather than showing it immediately.
+  onTracedError?: (traceback: string) => void;
 }
 
 function spawnWorker(): Worker {
@@ -39,6 +44,7 @@ function spawnWorker(): Worker {
 export class PythonRunnerClient {
   private worker: Worker | null = null;
   private currentRunId: string | null = null;
+  private isTraced = false;
   private callbacks: PythonRunnerCallbacks;
   private pendingPageRequests = new Map<
     string,
@@ -120,6 +126,10 @@ export class PythonRunnerClient {
         }
         return;
       }
+      case "run-timeline":
+        if (message.id !== this.currentRunId) return;
+        this.callbacks.onTimeline?.(message.steps);
+        return;
       case "run-result":
         if (message.id !== this.currentRunId) return;
         this.currentRunId = null;
@@ -128,7 +138,11 @@ export class PythonRunnerClient {
       case "run-error":
         if (message.id !== this.currentRunId) return;
         this.currentRunId = null;
-        this.callbacks.onOutput({ kind: "traceback", text: message.traceback });
+        if (this.isTraced) {
+          this.callbacks.onTracedError?.(message.traceback);
+        } else {
+          this.callbacks.onOutput({ kind: "traceback", text: message.traceback });
+        }
         this.callbacks.onStatusChange("ready");
         return;
       case "dataframe-page-result": {
@@ -152,8 +166,18 @@ export class PythonRunnerClient {
     if (!this.worker) return;
     const id = crypto.randomUUID();
     this.currentRunId = id;
+    this.isTraced = false;
     this.callbacks.onStatusChange("running");
     this.worker.postMessage({ type: "run", id, code });
+  }
+
+  runTraced(code: string) {
+    if (!this.worker) return;
+    const id = crypto.randomUUID();
+    this.currentRunId = id;
+    this.isTraced = true;
+    this.callbacks.onStatusChange("running");
+    this.worker.postMessage({ type: "run-traced", id, code });
   }
 
   fetchDataframePage(

@@ -5,12 +5,18 @@ import {
   type OutputEntry,
   type RunnerStatus,
 } from "./runner";
-import type { DataframeSort } from "./protocol";
+import type { DataframeSort, StepEvent } from "./protocol";
+
+export interface UsePythonRunnerCallbacks {
+  onTimeline?: (steps: StepEvent[]) => void;
+  onTracedError?: (traceback: string) => void;
+}
 
 export interface UsePythonRunnerResult {
   status: RunnerStatus;
   output: OutputEntry[];
   run: (code: string) => void;
+  runTraced: (code: string) => void;
   stop: () => void;
   clearOutput: () => void;
   fetchDataframePage: (
@@ -21,15 +27,21 @@ export interface UsePythonRunnerResult {
   ) => Promise<DataframePage>;
 }
 
-export function usePythonRunner(): UsePythonRunnerResult {
+export function usePythonRunner(callbacks: UsePythonRunnerCallbacks = {}): UsePythonRunnerResult {
   const [status, setStatus] = useState<RunnerStatus>("loading");
   const [output, setOutput] = useState<OutputEntry[]>([]);
   const clientRef = useRef<PythonRunnerClient | null>(null);
+  const callbacksRef = useRef(callbacks);
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  }, [callbacks]);
 
   useEffect(() => {
     const client = new PythonRunnerClient({
       onStatusChange: setStatus,
       onOutput: (entry) => setOutput((prev) => [...prev, entry]),
+      onTimeline: (steps) => callbacksRef.current.onTimeline?.(steps),
+      onTracedError: (traceback) => callbacksRef.current.onTracedError?.(traceback),
     });
     clientRef.current = client;
     return () => {
@@ -40,6 +52,10 @@ export function usePythonRunner(): UsePythonRunnerResult {
 
   const run = useCallback((code: string) => {
     clientRef.current?.run(code);
+  }, []);
+
+  const runTraced = useCallback((code: string) => {
+    clientRef.current?.runTraced(code);
   }, []);
 
   const stop = useCallback(() => {
@@ -60,5 +76,5 @@ export function usePythonRunner(): UsePythonRunnerResult {
     [],
   );
 
-  return { status, output, run, stop, clearOutput, fetchDataframePage };
+  return { status, output, run, runTraced, stop, clearOutput, fetchDataframePage };
 }

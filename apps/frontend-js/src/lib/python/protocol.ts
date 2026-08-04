@@ -7,6 +7,13 @@ export const runRequestSchema = z.object({
 });
 export type RunRequest = z.infer<typeof runRequestSchema>;
 
+export const runTracedRequestSchema = z.object({
+  type: z.literal("run-traced"),
+  id: z.string(),
+  code: z.string(),
+});
+export type RunTracedRequest = z.infer<typeof runTracedRequestSchema>;
+
 export const dataframeSortSchema = z.object({
   columnIndex: z.number(),
   direction: z.enum(["asc", "desc"]),
@@ -25,6 +32,7 @@ export type DataframePageRequest = z.infer<typeof dataframePageRequestSchema>;
 
 export const mainToWorkerMessageSchema = z.discriminatedUnion("type", [
   runRequestSchema,
+  runTracedRequestSchema,
   dataframePageRequestSchema,
 ]);
 export type MainToWorkerMessage = z.infer<typeof mainToWorkerMessageSchema>;
@@ -119,6 +127,21 @@ export const dataframePageErrorSchema = z.object({
   message: z.string(),
 });
 
+export const stepEventSchema = z.object({
+  line: z.number(),
+  stdout: z.array(z.string()),
+  stderr: z.array(z.string()),
+  display: z.array(displayPayloadSchema),
+});
+export type StepEvent = z.infer<typeof stepEventSchema>;
+
+export const runTimelineMessageSchema = z.object({
+  type: z.literal("run-timeline"),
+  id: z.string(),
+  steps: z.array(stepEventSchema),
+});
+export type RunTimelineMessage = z.infer<typeof runTimelineMessageSchema>;
+
 export const workerToMainMessageSchema = z.discriminatedUnion("type", [
   readyMessageSchema,
   stdoutMessageSchema,
@@ -129,6 +152,7 @@ export const workerToMainMessageSchema = z.discriminatedUnion("type", [
   displayMessageSchema,
   dataframePageResultSchema,
   dataframePageErrorSchema,
+  runTimelineMessageSchema,
 ]);
 export type WorkerToMainMessage = z.infer<typeof workerToMainMessageSchema>;
 
