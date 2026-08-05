@@ -9,7 +9,7 @@ import { loadPyodide, type PyodideInterface } from "pyodide";
 // prefix by hand instead of pulling in @types/node.
 const thisFilePath = import.meta.url.replace(/^file:\/\//, "");
 const thisDir = thisFilePath.slice(0, thisFilePath.lastIndexOf("/"));
-const localIndexURL = `${thisDir}/../../../../../node_modules/pyodide/`;
+const localIndexURL = `${thisDir}/../../../node_modules/pyodide/`;
 
 let run: typeof import("./runner.worker").run;
 let runTraced: typeof import("./runner.worker").runTraced;
