@@ -1,6 +1,6 @@
 import type { ExecutionOutcome, ExecutionRunner } from "@txt4/core";
 
-export type JsOutput = { kind: "log"; text: string };
+export type LangJsOutput = { kind: "log"; text: string };
 
 // Dev-harness-only, unsafe for untrusted input: the whole program runs as a
 // single `new Function` body (only ever the trusted samples in this
@@ -8,10 +8,10 @@ export type JsOutput = { kind: "log"; text: string };
 // non-comment line. That keeps `let`/`const` bindings shared across lines,
 // the same way a real script would, while still letting us attribute each
 // `console.log()` call to the line that produced it.
-export const jsRunner: ExecutionRunner<JsOutput> = {
+export const langJsRunner: ExecutionRunner<LangJsOutput> = {
   async run(code) {
     const lines = code.split("\n");
-    const steps: ExecutionOutcome<JsOutput>["steps"] = [];
+    const steps: ExecutionOutcome<LangJsOutput>["steps"] = [];
     let currentStepIndex = -1;
 
     const mark = (lineNumber: number) => {

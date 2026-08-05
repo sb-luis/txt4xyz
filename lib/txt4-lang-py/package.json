@@ -1,5 +1,5 @@
 {
-  "name": "@txt4/core",
+  "name": "@txt4/lang-py",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -21,14 +21,13 @@
   "peerDependencies": {
     "react": "^19",
     "react-dom": "^19",
-    "@codemirror/commands": "^6",
-    "@codemirror/language": "^6",
-    "@codemirror/state": "^6",
-    "@codemirror/view": "^6",
-    "@lezer/highlight": "^1"
+    "@codemirror/language": "^6"
   },
   "dependencies": {
-    "codemirror": "6.0.2"
+    "@astral-sh/ruff-wasm-web": "^0.16.1",
+    "@codemirror/lang-python": "6.2.1",
+    "pyodide": "314.0.3",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "typescript": "6.0.3",
@@ -40,11 +39,7 @@
     "@types/react-dom": "19.2.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "@codemirror/commands": "6.10.4",
     "@codemirror/language": "6.12.4",
-    "@codemirror/state": "6.7.1",
-    "@codemirror/view": "6.43.6",
-    "@lezer/highlight": "1.2.3",
     "eslint": "10.8.0",
     "@eslint/js": "10.0.1",
     "typescript-eslint": "8.65.0",

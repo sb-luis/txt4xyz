@@ -2,16 +2,17 @@
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 const lib = (name: string) => path.resolve(import.meta.dirname, `../../lib/${name}/src/index.ts`);
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@txt4/core": lib("txt4-core"),
-      "@txt4/lang-xyz": lib("txt4-lang-xyz"),
       "@txt4/lang-js": lib("txt4-lang-js"),
+      "@txt4/lang-py": lib("txt4-lang-py"),
     },
     // lib packages are compiled from source out of their own directories, so
     // their bare imports would otherwise resolve to a second copy in
@@ -24,6 +25,8 @@ export default defineConfig({
       "@codemirror/language",
       "@codemirror/state",
       "@codemirror/view",
+      "@codemirror/lang-python",
+      "@codemirror/lang-javascript",
       "@lezer/highlight",
       "@lezer/common",
     ],

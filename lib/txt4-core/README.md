@@ -119,5 +119,5 @@ to be whatever your runtime produces (dataframes, plots, plain log lines).
 ## Trying it out
 
 See `apps/playground`, a dev-only workbench that consumes this package
-(along with `@txt4/lang-xyz` and `@txt4/lang-js`) via source-level path aliases, the
+(along with `@txt4/lang-js` and `@txt4/lang-py`) via source-level path aliases, the
 same way `apps/frontend-js` will.

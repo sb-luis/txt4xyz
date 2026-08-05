@@ -18,4 +18,4 @@ Not yet published. Consumed via TypeScript path aliases and a matching Vite
 - `JsOutput` — `{ kind: "log"; text: string }`
 
 Depends on `@txt4/core` only, for the `ExecutionOutcome`/`ExecutionRunner`
-protocol types. Does not depend on `@txt4/lang-xyz`.
+protocol types.

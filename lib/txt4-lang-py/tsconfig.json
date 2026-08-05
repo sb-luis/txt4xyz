@@ -3,6 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "paths": {
+      "@/*": ["./src/*"],
       "@txt4/core": ["../txt4-core/src/index.ts"]
     }
   },

@@ -4,8 +4,8 @@
     "noEmit": true,
     "paths": {
       "@txt4/core": ["../../lib/txt4-core/src/index.ts"],
-      "@txt4/lang-xyz": ["../../lib/txt4-lang-xyz/src/index.ts"],
-      "@txt4/lang-js": ["../../lib/txt4-lang-js/src/index.ts"]
+      "@txt4/lang-js": ["../../lib/txt4-lang-js/src/index.ts"],
+      "@txt4/lang-py": ["../../lib/txt4-lang-py/src/index.ts"]
     }
   },
   "include": ["src"],
