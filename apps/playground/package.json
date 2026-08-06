@@ -10,6 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@txt4/collab": "*",
+    "@txt4/core": "*",
+    "@txt4/lang-js": "*",
+    "@txt4/lang-py": "*",
     "@codemirror/commands": "6.10.4",
     "@codemirror/language": "6.12.4",
     "@codemirror/state": "6.7.1",

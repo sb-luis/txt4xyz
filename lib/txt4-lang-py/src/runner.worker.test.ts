@@ -7,9 +7,11 @@ import { loadPyodide, type PyodideInterface } from "pyodide";
 // regardless of which directory vitest is invoked from. `node:url`/`node:path`
 // aren't available in this browser-targeted tsconfig, so strip the `file://`
 // prefix by hand instead of pulling in @types/node.
-const thisFilePath = import.meta.url.replace(/^file:\/\//, "");
-const thisDir = thisFilePath.slice(0, thisFilePath.lastIndexOf("/"));
-const localIndexURL = `${thisDir}/../node_modules/pyodide/`;
+// Resolved via the ESM resolver rather than a package-relative node_modules
+// path: under npm workspaces, pyodide lives in the hoisted root
+// node_modules, not this package's own (which no longer exists).
+const pyodideEntryPath = import.meta.resolve("pyodide/pyodide.mjs").replace(/^file:\/\//, "");
+const localIndexURL = `${pyodideEntryPath.slice(0, pyodideEntryPath.lastIndexOf("/"))}/`;
 
 let run: typeof import("./runner.worker").run;
 let runTraced: typeof import("./runner.worker").runTraced;

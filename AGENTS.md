@@ -12,9 +12,15 @@ that apply to every session.
 
 ```
 apps/frontend-js    Vite + React + TypeScript + Tailwind
+apps/playground     Vite + React playground for lib/* packages
 apps/backend-go     Go websocket relay
+lib/*               Shared TS packages (@txt4/core, @txt4/collab, @txt4/lang-js, @txt4/lang-py)
 plan/               Build plan, split by domain — see plan/00-start-here.md
 ```
+
+`apps/frontend-js`, `apps/playground`, and `lib/*` are npm workspaces under the root
+`package.json` — one hoisted `node_modules`, one root `package-lock.json`. Run `npm install` at
+the repo root, not inside a package. `apps/backend-go` is Go and is not part of the workspace.
 
 ## Verification
 

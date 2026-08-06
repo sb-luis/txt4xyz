@@ -10,9 +10,6 @@ on:
 jobs:
   frontend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/frontend-js
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -20,22 +17,80 @@ jobs:
         with:
           node-version: 24.18.0
           cache: npm
-          cache-dependency-path: apps/frontend-js/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Typecheck
+        working-directory: apps/frontend-js
         run: npx tsc --noEmit
 
       - name: Lint
+        run: npm run lint -w txt4-frontend
+
+      - name: Test
+        run: npm test -w txt4-frontend
+
+      - name: Build
+        run: npm run build -w txt4-frontend
+
+  lib:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [txt4-core, txt4-collab, txt4-lang-js, txt4-lang-py]
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: lib/${{ matrix.package }}
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: lib/${{ matrix.package }}
         run: npm run lint
 
       - name: Test
+        working-directory: lib/${{ matrix.package }}
         run: npm test
 
+  playground:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: apps/playground
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint -w txt4-playground
+
+      - name: Test
+        run: npm test -w txt4-playground
+
       - name: Build
-        run: npm run build
+        run: npm run build -w txt4-playground
 
   backend:
     runs-on: ubuntu-latest
@@ -83,10 +138,9 @@ jobs:
         with:
           node-version: 24.18.0
           cache: npm
-          cache-dependency-path: apps/frontend-js/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: apps/frontend-js
         run: npm ci
 
       # Started and awaited in one step: a background process left behind by a

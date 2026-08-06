@@ -1,0 +1,5 @@
+{
+  "name": "txt4xyz",
+  "private": true,
+  "workspaces": ["apps/frontend-js", "apps/playground", "lib/*"]
+}

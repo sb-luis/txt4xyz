@@ -1,7 +1,10 @@
 node_modules
 dist
 .git
+.github
 .gitignore
+plan
 *.md
 .env
 .env.*
+apps/backend-go
