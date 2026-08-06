@@ -17,6 +17,14 @@ export function IndexPage() {
               </button>
             </li>
           ))}
+          <li>
+            <button
+              onClick={() => navigate("/collab")}
+              className="w-64 rounded border border-slate-700 bg-slate-900 px-4 py-2 text-left text-sm hover:bg-slate-800"
+            >
+              collab
+            </button>
+          </li>
         </ul>
       </div>
     </div>
