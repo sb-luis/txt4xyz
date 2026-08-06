@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { useAlias } from "@/lib/alias/AliasContext";
-import { MAX_ALIAS_LENGTH, isValidAlias } from "@/lib/alias/alias";
+import { MAX_ALIAS_LENGTH, isValidAlias, useAlias } from "@/components/settings/AliasContext";
 
 export interface AliasFieldProps {
   id?: string;

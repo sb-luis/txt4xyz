@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { CLOSE_ROOM_FULL, CLOSE_AT_CAPACITY, CLOSE_INVALID_ROOM_ID } from "@/lib/collab/provider";
+import { CLOSE_ROOM_FULL, CLOSE_AT_CAPACITY, CLOSE_INVALID_ROOM_ID } from "@txt4/collab";
 import { ParticipantsList } from "./ParticipantsList";
 
 const DISCONNECTED_ROOM = { status: "disconnected" as const, rejectedCode: null, participants: [] };

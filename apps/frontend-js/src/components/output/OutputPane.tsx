@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { DataframeSort } from "@/lib/python/protocol";
-import type { DataframePage, OutputEntry, RunnerStatus } from "@/lib/python/runner";
+import type { DataframeSort, DataframePage, OutputEntry, RunnerStatus } from "@txt4/lang-py";
 import { DataFrameTable } from "./DataFrameTable";
 import { PlotView } from "./PlotView";
 import { HtmlView } from "./HtmlView";

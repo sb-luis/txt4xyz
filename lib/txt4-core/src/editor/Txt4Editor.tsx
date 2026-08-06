@@ -1,6 +1,6 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { currentLineField, setCurrentLine } from "./internal/currentLine.js";
@@ -48,6 +48,8 @@ export const Txt4Editor = forwardRef<Txt4EditorHandle, Txt4EditorProps>(function
   const viewRef = useRef<EditorView | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialFlashKeyRef = useRef(true);
+  const beforeCompartmentRef = useRef(new Compartment());
+  const afterCompartmentRef = useRef(new Compartment());
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -57,11 +59,13 @@ export const Txt4Editor = forwardRef<Txt4EditorHandle, Txt4EditorProps>(function
     if (!containerRef.current) return;
 
     const { before, after } = splitExtensions(extensions ?? []);
+    const beforeCompartment = beforeCompartmentRef.current;
+    const afterCompartment = afterCompartmentRef.current;
 
     const state = EditorState.create({
       doc: initialDoc,
       extensions: [
-        ...before,
+        beforeCompartment.of(before),
         lineNumbers(),
         highlightActiveLine(),
         drawSelection(),
@@ -87,7 +91,7 @@ export const Txt4Editor = forwardRef<Txt4EditorHandle, Txt4EditorProps>(function
             onChangeRef.current(update.state.doc.toString());
           }
         }),
-        ...after,
+        afterCompartment.of(after),
       ],
     });
 
@@ -99,12 +103,28 @@ export const Txt4Editor = forwardRef<Txt4EditorHandle, Txt4EditorProps>(function
       view.destroy();
     };
     // initialDoc seeds the editor once and later changes to it are ignored on
-    // purpose. extensions/maxDocLength are intentionally excluded too: a host
-    // that needs to change them live should key the component to force a
-    // remount, mirroring how CodeMirror extensions are normally reconfigured
-    // via Compartments the host owns, not by this component.
+    // purpose. maxDocLength is intentionally excluded too, since it's only
+    // ever read at construction. extensions changes are handled by the
+    // reconfigure effect below via the two compartments, not by remounting.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const isInitialExtensionsRef = useRef(true);
+  useEffect(() => {
+    if (isInitialExtensionsRef.current) {
+      isInitialExtensionsRef.current = false;
+      return;
+    }
+    const view = viewRef.current;
+    if (!view) return;
+    const { before, after } = splitExtensions(extensions ?? []);
+    view.dispatch({
+      effects: [
+        beforeCompartmentRef.current.reconfigure(before),
+        afterCompartmentRef.current.reconfigure(after),
+      ],
+    });
+  }, [extensions]);
 
   useEffect(() => {
     if (flashKey === undefined) return;

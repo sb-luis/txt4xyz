@@ -9,9 +9,13 @@
       (function () {
         try {
           var stored = localStorage.getItem("txt4xyz:theme");
+          var candidate = stored;
+          try {
+            candidate = JSON.parse(stored);
+          } catch (e) {}
           var theme =
-            stored === "light" || stored === "dark"
-              ? stored
+            candidate === "light" || candidate === "dark"
+              ? candidate
               : window.matchMedia("(prefers-color-scheme: dark)").matches
                 ? "dark"
                 : "light";

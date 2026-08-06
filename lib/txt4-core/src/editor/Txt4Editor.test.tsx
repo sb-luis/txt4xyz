@@ -1,6 +1,7 @@
 import { createRef } from "react";
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { undoDepth } from "@codemirror/commands";
 import { EditorView, keymap } from "@codemirror/view";
 import { Txt4Editor, type Txt4EditorHandle } from "./Txt4Editor";
 
@@ -124,5 +125,55 @@ describe("Txt4Editor", () => {
       <Txt4Editor initialDoc="a" onChange={vi.fn()} extensions={[EditorView.editable.of(false)]} />,
     );
     expect(getByLabelText("code editor")).toBeTruthy();
+  });
+
+  it("preserves document content and undo history when the extensions prop changes", () => {
+    const { container, rerender } = render(
+      <Txt4Editor initialDoc="hello" onChange={vi.fn()} extensions={[]} />,
+    );
+    const contentEl = container.querySelector(".cm-content") as HTMLElement;
+    const view = EditorView.findFromDOM(contentEl)!;
+
+    view.dispatch({ changes: { from: 5, insert: " world" }, userEvent: "input.type" });
+    expect(view.state.doc.toString()).toBe("hello world");
+
+    rerender(
+      <Txt4Editor
+        initialDoc="hello"
+        onChange={vi.fn()}
+        extensions={[{ extension: EditorView.editable.of(false), position: "before" }]}
+      />,
+    );
+
+    expect(view.state.doc.toString()).toBe("hello world");
+    expect(undoDepth(view.state)).toBeGreaterThan(0);
+  });
+
+  it("keeps a reconfigured 'before' extension ahead of the default keymap", () => {
+    const calls: string[] = [];
+    const hostKeymap = keymap.of([
+      {
+        key: "Mod-Enter",
+        run: () => {
+          calls.push("host");
+          return true;
+        },
+      },
+    ]);
+
+    const { container, rerender } = render(<Txt4Editor initialDoc="a" onChange={vi.fn()} extensions={[]} />);
+    const contentEl = container.querySelector(".cm-content") as HTMLElement;
+
+    rerender(
+      <Txt4Editor
+        initialDoc="a"
+        onChange={vi.fn()}
+        extensions={[{ extension: hostKeymap, position: "before" }]}
+      />,
+    );
+
+    fireEvent.keyDown(contentEl, { key: "Enter", ctrlKey: true });
+
+    expect(calls).toEqual(["host"]);
   });
 });

@@ -1,5 +1,5 @@
 import { MoonIcon, SunIcon } from "lucide-react";
-import { useTheme } from "@/lib/theme/ThemeContext";
+import { useTheme } from "@/components/settings/ThemeContext";
 import { Button } from "@/components/ui/button";
 
 export function ThemeSwitcher() {

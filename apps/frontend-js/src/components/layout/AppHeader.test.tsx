@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { AliasProvider } from "@/lib/alias/AliasContext";
-import { ThemeProvider } from "@/lib/theme/ThemeContext";
-import { VimModeProvider } from "@/lib/vim/VimModeContext";
+import { AliasProvider } from "@/components/settings/AliasContext";
+import { ThemeProvider } from "@/components/settings/ThemeContext";
+import { VimModeProvider } from "@/components/settings/VimModeContext";
 import { AppHeader } from "./AppHeader";
 
 const DISCONNECTED_ROOM = { status: "disconnected" as const, rejectedCode: null, participants: [] };

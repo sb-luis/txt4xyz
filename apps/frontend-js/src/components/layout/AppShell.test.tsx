@@ -148,4 +148,28 @@ describe("AppShell", () => {
     // run requests back and forth forever.
     expect(lastFakeSocket!.sent.length).toBe(sentBefore);
   });
+
+  it("re-executes on the run shortcut after a completed run, with the code unchanged", async () => {
+    render(<AppShell />);
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    const playButton = screen.getByRole("button", { name: "play" });
+    fireEvent.click(playButton);
+
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(lastFakeWorker!.runCalls.length).toBe(1);
+
+    fireEvent.keyDown(document, { key: "Enter", metaKey: true });
+
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    expect(lastFakeWorker!.runCalls.length).toBe(2);
+  });
 });

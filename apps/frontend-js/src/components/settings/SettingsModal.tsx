@@ -8,8 +8,8 @@ import { AliasField } from "@/components/settings/AliasField";
 import { ShortcutList } from "@/components/settings/ShortcutList";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
-import { useVimMode } from "@/lib/vim/VimModeContext";
+import { ThemeSwitcher } from "@/components/settings/ThemeSwitcher";
+import { useVimMode } from "@/components/settings/VimModeContext";
 
 export interface SettingsModalProps {
   open: boolean;

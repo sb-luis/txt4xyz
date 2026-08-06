@@ -5,35 +5,25 @@ import { PlaybackControls } from "@/components/layout/PlaybackControls";
 import { StatusBar } from "@/components/layout/StatusBar";
 import { Workspace } from "@/components/layout/Workspace";
 import { OutputPane } from "@/components/output/OutputPane";
-import { usePythonRunner } from "@/lib/python/usePythonRunner";
-import { timelineToPlaybackSteps } from "@/lib/python/timelineToPlaybackSteps";
-import type { OutputEntry } from "@/lib/python/runner";
-import { usePlayback } from "@/lib/playback/usePlayback";
-import type { PlaybackStep } from "@/lib/playback/types";
-import { resolveEditorRoomId } from "@/lib/collab/room";
-import { useRoom } from "@/lib/collab/useRoom";
-import { AliasProvider, useAlias } from "@/lib/alias/AliasContext";
-import { ThemeProvider } from "@/lib/theme/ThemeContext";
-import { VimModeProvider } from "@/lib/vim/VimModeContext";
+import { useLangPyRunner, timelineToPlaybackSteps, formatLangPy, useFormatterStatus } from "@txt4/lang-py";
+import type { OutputEntry } from "@txt4/lang-py";
+import { usePlayback } from "@txt4/core";
+import type { PlaybackStep } from "@txt4/core";
+import { useRoom, resolveEditorRoomId, createLocalDocStore } from "@txt4/collab";
+import { AliasProvider, useAlias } from "@/components/settings/AliasContext";
+import { ThemeProvider } from "@/components/settings/ThemeContext";
+import { VimModeProvider } from "@/components/settings/VimModeContext";
 import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
-import { formatPython } from "@/lib/format/ruffFormatter";
-import { useFormatterStatus } from "@/lib/format/useFormatterStatus";
 import { nextWorkspaceLayout, type WorkspaceLayout } from "@/lib/workspace/layout";
 import { createDebouncedOfflineDocWriter, readOfflineDoc } from "@/lib/persistence/localStore";
+import { byteLength } from "@/lib/utils";
 
 export type AppShellMode = "collab" | "offline";
-
-const textEncoder = new TextEncoder();
-
-// Bytes, not JS string length, which undercounts multi-byte characters.
-function byteLength(doc: string): number {
-  return textEncoder.encode(doc).length;
-}
 
 function AppShellInner({ mode }: { mode: AppShellMode }) {
   const [timelineSteps, setTimelineSteps] = useState<PlaybackStep<OutputEntry>[] | null>(null);
   const [timelineError, setTimelineError] = useState<string | null>(null);
-  const { status, runTraced, stop, fetchDataframePage } = usePythonRunner({
+  const { status, runTraced, stop, fetchDataframePage } = useLangPyRunner({
     onTimeline: (steps) => setTimelineSteps(timelineToPlaybackSteps(steps)),
     onTracedError: (traceback) => setTimelineError(traceback),
   });
@@ -47,6 +37,7 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
   const editorRef = useRef<CodeEditorHandle>(null);
   const [formatError, setFormatError] = useState<string | null>(null);
   const { alias } = useAlias();
+  const [docStore] = useState(() => createLocalDocStore());
   const {
     ytext,
     awareness,
@@ -55,7 +46,18 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
     participants,
     lastRunBroadcast,
     broadcastRun,
-  } = useRoom(roomId, alias);
+  } = useRoom({ roomId, alias, store: docStore });
+
+  // Bumped whenever useRoom mints a new Y.Doc (room change or reconnect), so
+  // the editor below remounts instead of staying bound to a destroyed ytext.
+  const [{ ytext: seenYtext, generation: docGeneration }, setDocGeneration] = useState(() => ({
+    ytext,
+    generation: 0,
+  }));
+  if (ytext !== seenYtext) {
+    setDocGeneration({ ytext, generation: docGeneration + 1 });
+  }
+
   const [flashKey, setFlashKey] = useState(0);
   const prevStatusRef = useRef(status);
   const lastSeenRunBroadcastIdRef = useRef<string | null>(null);
@@ -82,6 +84,17 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
     setTimelineSteps((prev) => (prev === null ? prev : null));
     setTimelineError((prev) => (prev === null ? prev : null));
   }, []);
+
+  const handleDocChange = useCallback(
+    (doc: string) => {
+      codeRef.current = doc;
+      setDocBytes(byteLength(doc));
+      setFormatError(null);
+      invalidateTimeline();
+      offlineWriterRef.current?.schedule(doc);
+    },
+    [invalidateTimeline],
+  );
 
   // Without this, a fragment change (back/forward, or pasting a room link into
   // an open tab) never reloads the page, so the app keeps relaying into the
@@ -110,6 +123,10 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
     }
   }, [playback]);
 
+  const handleRun = useCallback(() => {
+    playback.restart();
+  }, [playback]);
+
   const handleReset = useCallback(() => {
     // A recording that's still in flight has no other way to be aborted --
     // the same hard worker-terminate the old Stop control used.
@@ -126,7 +143,7 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
     const snapshot = codeRef.current;
     setFormatError(null);
     try {
-      const formatted = await formatPython(snapshot);
+      const formatted = await formatLangPy(snapshot);
       // Bail if the doc changed while formatting was in flight, so we don't
       // clobber an edit (local or remote) that landed during the await.
       if (codeRef.current !== snapshot || formatted === snapshot) return;
@@ -137,7 +154,7 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
   }, [formatterStatus]);
 
   useGlobalShortcuts({
-    onRun: handlePlayPause,
+    onRun: handleRun,
     onStop: handleReset,
     onCycleLayout: handleCycleLayout,
     onFormat: handleFormat,
@@ -203,29 +220,18 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
                 initialDoc={initialOfflineDoc}
                 flashKey={flashKey}
                 currentLine={playback.currentLine}
-                onChange={(doc) => {
-                  codeRef.current = doc;
-                  setDocBytes(byteLength(doc));
-                  setFormatError(null);
-                  invalidateTimeline();
-                  offlineWriterRef.current?.schedule(doc);
-                }}
+                onChange={handleDocChange}
               />
             ) : ytext === null ? null : (
               <CodeEditor
-                key={roomId}
+                key={docGeneration}
                 ref={editorRef}
                 initialDoc=""
                 ytext={ytext}
                 awareness={awareness}
                 flashKey={flashKey}
                 currentLine={playback.currentLine}
-                onChange={(doc) => {
-                  codeRef.current = doc;
-                  setDocBytes(byteLength(doc));
-                  setFormatError(null);
-                  invalidateTimeline();
-                }}
+                onChange={handleDocChange}
               />
             )
           }

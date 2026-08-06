@@ -1,12 +1,11 @@
 import { useState } from "react";
-import type { ConnectionStatus } from "@/lib/collab/provider";
-import type { Participant } from "@/lib/collab/useRoom";
+import type { ConnectionStatus, Participant } from "@txt4/collab";
 import { ParticipantsList } from "@/components/collab/ParticipantsList";
-import { FormatButton } from "@/components/ui/FormatButton";
+import { FormatButton } from "@/components/layout/FormatButton";
 import { SettingsButton } from "@/components/settings/SettingsButton";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { FormatterStatus } from "@/lib/format/useFormatterStatus";
+import type { FormatterStatus } from "@txt4/lang-py";
 import type { WorkspaceLayout } from "@/lib/workspace/layout";
 
 export interface AppHeaderProps {

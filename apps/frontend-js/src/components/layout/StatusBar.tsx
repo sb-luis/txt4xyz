@@ -1,5 +1,4 @@
-import type { FormatterStatus } from "@/lib/format/useFormatterStatus";
-import type { RunnerStatus } from "@/lib/python/runner";
+import type { FormatterStatus, RunnerStatus } from "@txt4/lang-py";
 
 const RUNTIME_STATUS_LABEL: Record<RunnerStatus, string> = {
   loading: "loading runtime…",

@@ -1,6 +1,6 @@
 import { PauseIcon, PlayIcon, RotateCcwIcon, SkipBackIcon, SkipForwardIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { PlaybackPhase } from "@/lib/playback/usePlayback";
+import type { PlaybackPhase } from "@txt4/core";
 
 export interface PlaybackControlsProps {
   phase: PlaybackPhase;

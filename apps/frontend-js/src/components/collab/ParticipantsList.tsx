@@ -3,8 +3,8 @@ import {
   CLOSE_AT_CAPACITY,
   CLOSE_INVALID_ROOM_ID,
   type ConnectionStatus,
-} from "@/lib/collab/provider";
-import type { Participant } from "@/lib/collab/useRoom";
+  type Participant,
+} from "@txt4/collab";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Avatar,

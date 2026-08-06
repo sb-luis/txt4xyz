@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { OutputPane } from "./OutputPane";
-import type { OutputEntry } from "@/lib/python/runner";
+import type { OutputEntry } from "@txt4/lang-py";
 
 const fetchDataframePage = vi.fn().mockResolvedValue({ rows: [], rowCount: 0 });
 

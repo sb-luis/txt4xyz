@@ -30,8 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { DataframeSort } from "@/lib/python/protocol";
-import type { DataframePage } from "@/lib/python/runner";
+import type { DataframeSort, DataframePage } from "@txt4/lang-py";
 
 export interface DataFrameTableProps {
   columns: string[];
