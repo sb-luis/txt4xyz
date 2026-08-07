@@ -1,5 +1,9 @@
 {
   "name": "txt4xyz",
   "private": true,
-  "workspaces": ["apps/frontend-js", "apps/playground", "lib/*"]
+  "workspaces": ["apps/frontend-js", "apps/playground", "lib/*"],
+  "scripts": {
+    "site": "npm run dev -w apps/frontend-js",
+    "play": "npm run dev -w apps/playground"
+  }
 }

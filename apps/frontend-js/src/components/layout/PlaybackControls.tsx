@@ -29,7 +29,7 @@ export function PlaybackControls({
   const playPauseDisabled = phase !== "recording" && !isPlaying && !canStepForward;
 
   return (
-    <div className="flex shrink-0 items-center justify-center gap-1 border-b border-border px-4 py-2">
+    <>
       <Button
         variant="ghost"
         size="icon"
@@ -66,6 +66,6 @@ export function PlaybackControls({
       >
         <RotateCcwIcon />
       </Button>
-    </div>
+    </>
   );
 }

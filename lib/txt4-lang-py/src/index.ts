@@ -1,6 +1,7 @@
 export { useLangPyRunner } from "./useLangPyRunner.js";
 export { LangPyRunnerClient } from "./runner.js";
 export { createLangPyRunner } from "./langPyRunner.js";
+export { createLangPyStreamingRunner } from "./langPyStreamingRunner.js";
 export { timelineToPlaybackSteps } from "./timelineToPlaybackSteps.js";
 export { formatLangPy, ensureFormatterReady, FormatError } from "./format/ruffFormatter.js";
 export { useFormatterStatus } from "./format/useFormatterStatus.js";

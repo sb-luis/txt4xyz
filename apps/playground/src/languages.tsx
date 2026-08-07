@@ -1,13 +1,26 @@
 import type { ReactNode } from "react";
-import { txt4HighlightStyle, type ExecutionRunner, type ExtensionInput, type Snippet } from "@txt4/core";
-import { langJsRunner, langJsSnippets, langJsSupport, type LangJsOutput } from "@txt4/lang-js";
-import { createLangPyRunner, langPySnippets, langPySupport, type OutputEntry } from "@txt4/lang-py";
+import {
+  txt4HighlightStyle,
+  type ExecutionRunner,
+  type ExtensionInput,
+  type Snippet,
+  type StreamingExecutionRunner,
+} from "@txt4/core";
+import { langJsRunner, langJsSnippets, langJsSupport, langJsStreamingRunner, type LangJsOutput } from "@txt4/lang-js";
+import {
+  createLangPyRunner,
+  createLangPyStreamingRunner,
+  langPySnippets,
+  langPySupport,
+  type OutputEntry,
+} from "@txt4/lang-py";
 
 export interface LanguageEntry<TOutput = unknown> {
   id: string;
   path: string;
   name: string;
   runner: ExecutionRunner<TOutput>;
+  streamingRunner?: StreamingExecutionRunner<TOutput>;
   snippets: Snippet[];
   extensions: ExtensionInput[];
   renderOutput: (output: TOutput) => ReactNode;
@@ -60,6 +73,7 @@ export const languages: LanguageEntry[] = [
     path: "/lang-js",
     name: "langJs",
     runner: langJsRunner,
+    streamingRunner: langJsStreamingRunner,
     snippets: langJsSnippets,
     extensions: [langJsSupport(), txt4HighlightStyle],
     renderOutput: (output) => output.text,
@@ -69,6 +83,7 @@ export const languages: LanguageEntry[] = [
     path: "/lang-py",
     name: "langPy",
     runner: createLangPyRunner(),
+    streamingRunner: createLangPyStreamingRunner(),
     snippets: langPySnippets,
     extensions: [langPySupport(), txt4HighlightStyle],
     renderOutput: renderLangPyOutput,

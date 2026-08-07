@@ -8,6 +8,10 @@ let lastFakeWorker: FakeWorker | null = null;
 class FakeWorker {
   onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
   runCalls: string[] = [];
+  // Distinguishes which execution mode actually ran: "run" is the plain run
+  // path, "run-traced" is debug mode's record-then-scrub path. Without this,
+  // asserting on runCalls alone can't tell the two modes apart.
+  runTypes: Array<"run" | "run-traced"> = [];
   constructor() {
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- captures the instance for test assertions
     lastFakeWorker = this;
@@ -19,6 +23,7 @@ class FakeWorker {
     const { type, id } = message as { type: string; id: string };
     if (type !== "run" && type !== "run-traced") return;
     this.runCalls.push(id);
+    this.runTypes.push(type);
     queueMicrotask(() => {
       if (type === "run-traced") {
         this.onmessage?.({ data: { type: "run-timeline", id, steps: [] } } as MessageEvent<unknown>);
@@ -67,12 +72,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
   window.location.hash = "";
+  window.localStorage.clear();
   lastFakeSocket = null;
   lastFakeWorker = null;
 });
 
 async function flushMicrotasks() {
   for (let i = 0; i < 20; i++) await Promise.resolve();
+}
+
+// The execution mode defaults to "run" and is read from localStorage on
+// mount (ExecutionModeContext). Every test that cares which path runs must
+// set this explicitly -- relying on the ambient default is exactly the bug
+// this file is fixing.
+const EXECUTION_MODE_KEY = "txt4xyz:execution-mode";
+
+function setExecutionMode(mode: "run" | "debug") {
+  window.localStorage.setItem(EXECUTION_MODE_KEY, JSON.stringify(mode));
 }
 
 const MESSAGE_RUN = 2;
@@ -103,7 +119,32 @@ describe("AppShell", () => {
     expect(window.location.hash).toBe("#room=already-here");
   });
 
-  it("running runs locally and broadcasts a run to the room", async () => {
+  it("toggling debug switches the mode without executing; the next run is traced", async () => {
+    setExecutionMode("run");
+    render(<AppShell />);
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "debug mode" }));
+    await act(async () => {
+      await flushMicrotasks();
+    });
+    expect(lastFakeWorker!.runCalls.length).toBe(0);
+    expect(screen.getByRole("button", { name: "step forward" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "play" }));
+    await act(async () => {
+      await flushMicrotasks();
+    });
+    expect(lastFakeWorker!.runTypes).toEqual(["run-traced"]);
+  });
+
+  it.each([
+    { mode: "run" as const, expectedType: "run" as const },
+    { mode: "debug" as const, expectedType: "run-traced" as const },
+  ])("running runs locally and broadcasts a run to the room ($mode mode)", async ({ mode, expectedType }) => {
+    setExecutionMode(mode);
     render(<AppShell />);
     await act(async () => {
       await flushMicrotasks();
@@ -120,56 +161,73 @@ describe("AppShell", () => {
     });
 
     expect(lastFakeWorker!.runCalls.length).toBe(1);
+    expect(lastFakeWorker!.runTypes).toEqual([expectedType]);
     expect(lastFakeSocket!.sent.length).toBeGreaterThan(sentBefore);
   });
 
-  it("runs locally when a run request arrives from the room, without re-broadcasting it", async () => {
-    render(<AppShell />);
-    await act(async () => {
-      await flushMicrotasks();
-    });
-
-    expect(lastFakeWorker!.runCalls.length).toBe(0);
-
-    const bytes = encodeRunBroadcast("peer-run-1", 7);
-    const sentBefore = lastFakeSocket!.sent.length;
-    act(() => {
-      lastFakeSocket!.onmessage?.({
-        data: bytes.slice().buffer,
+  it.each([
+    { mode: "run" as const, expectedType: "run" as const },
+    { mode: "debug" as const, expectedType: "run-traced" as const },
+  ])(
+    "runs locally when a run request arrives from the room, without re-broadcasting it ($mode mode)",
+    async ({ mode, expectedType }) => {
+      setExecutionMode(mode);
+      render(<AppShell />);
+      await act(async () => {
+        await flushMicrotasks();
       });
-    });
 
-    await act(async () => {
-      await flushMicrotasks();
-    });
+      expect(lastFakeWorker!.runCalls.length).toBe(0);
 
-    expect(lastFakeWorker!.runCalls.length).toBe(1);
-    // A received run must not itself broadcast, or two tabs would ping-pong
-    // run requests back and forth forever.
-    expect(lastFakeSocket!.sent.length).toBe(sentBefore);
-  });
+      const bytes = encodeRunBroadcast("peer-run-1", 7);
+      const sentBefore = lastFakeSocket!.sent.length;
+      act(() => {
+        lastFakeSocket!.onmessage?.({
+          data: bytes.slice().buffer,
+        });
+      });
 
-  it("re-executes on the run shortcut after a completed run, with the code unchanged", async () => {
-    render(<AppShell />);
-    await act(async () => {
-      await flushMicrotasks();
-    });
+      await act(async () => {
+        await flushMicrotasks();
+      });
 
-    const playButton = screen.getByRole("button", { name: "play" });
-    fireEvent.click(playButton);
+      expect(lastFakeWorker!.runCalls.length).toBe(1);
+      expect(lastFakeWorker!.runTypes).toEqual([expectedType]);
+      // A received run must not itself broadcast, or two tabs would ping-pong
+      // run requests back and forth forever.
+      expect(lastFakeSocket!.sent.length).toBe(sentBefore);
+    },
+  );
 
-    await act(async () => {
-      await flushMicrotasks();
-    });
+  it.each([
+    { mode: "run" as const, expectedType: "run" as const },
+    { mode: "debug" as const, expectedType: "run-traced" as const },
+  ])(
+    "re-executes on the run shortcut after a completed run, with the code unchanged ($mode mode)",
+    async ({ mode, expectedType }) => {
+      setExecutionMode(mode);
+      render(<AppShell />);
+      await act(async () => {
+        await flushMicrotasks();
+      });
 
-    expect(lastFakeWorker!.runCalls.length).toBe(1);
+      const playButton = screen.getByRole("button", { name: "play" });
+      fireEvent.click(playButton);
 
-    fireEvent.keyDown(document, { key: "Enter", metaKey: true });
+      await act(async () => {
+        await flushMicrotasks();
+      });
 
-    await act(async () => {
-      await flushMicrotasks();
-    });
+      expect(lastFakeWorker!.runCalls.length).toBe(1);
 
-    expect(lastFakeWorker!.runCalls.length).toBe(2);
-  });
+      fireEvent.keyDown(document, { key: "Enter", metaKey: true });
+
+      await act(async () => {
+        await flushMicrotasks();
+      });
+
+      expect(lastFakeWorker!.runCalls.length).toBe(2);
+      expect(lastFakeWorker!.runTypes).toEqual([expectedType, expectedType]);
+    },
+  );
 });

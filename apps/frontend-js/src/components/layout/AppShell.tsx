@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CodeEditor, type CodeEditorHandle } from "@/components/editor/CodeEditor";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { ControlBar } from "@/components/layout/ControlBar";
 import { PlaybackControls } from "@/components/layout/PlaybackControls";
+import { RunControls } from "@/components/layout/RunControls";
 import { StatusBar } from "@/components/layout/StatusBar";
 import { Workspace } from "@/components/layout/Workspace";
 import { OutputPane } from "@/components/output/OutputPane";
-import { useLangPyRunner, timelineToPlaybackSteps, formatLangPy, useFormatterStatus } from "@txt4/lang-py";
-import type { OutputEntry } from "@txt4/lang-py";
-import { usePlayback } from "@txt4/core";
-import type { PlaybackStep } from "@txt4/core";
+import { formatLangPy, useFormatterStatus } from "@txt4/lang-py";
 import { useRoom, resolveEditorRoomId, createLocalDocStore } from "@txt4/collab";
 import { AliasProvider, useAlias } from "@/components/settings/AliasContext";
 import { ThemeProvider } from "@/components/settings/ThemeContext";
 import { VimModeProvider } from "@/components/settings/VimModeContext";
+import { ExecutionModeProvider } from "@/components/settings/ExecutionModeContext";
+import { useExecutionSession } from "@/lib/execution/useExecutionSession";
 import { useGlobalShortcuts } from "@/lib/shortcuts/useGlobalShortcuts";
 import { nextWorkspaceLayout, type WorkspaceLayout } from "@/lib/workspace/layout";
 import { createDebouncedOfflineDocWriter, readOfflineDoc } from "@/lib/persistence/localStore";
@@ -21,12 +22,6 @@ import { byteLength } from "@/lib/utils";
 export type AppShellMode = "collab" | "offline";
 
 function AppShellInner({ mode }: { mode: AppShellMode }) {
-  const [timelineSteps, setTimelineSteps] = useState<PlaybackStep<OutputEntry>[] | null>(null);
-  const [timelineError, setTimelineError] = useState<string | null>(null);
-  const { status, runTraced, stop, fetchDataframePage } = useLangPyRunner({
-    onTimeline: (steps) => setTimelineSteps(timelineToPlaybackSteps(steps)),
-    onTracedError: (traceback) => setTimelineError(traceback),
-  });
   const formatterStatus = useFormatterStatus();
   const [roomId, setRoomId] = useState(() => (mode === "collab" ? resolveEditorRoomId() : null));
   const [initialOfflineDoc] = useState(() => (mode === "offline" ? (readOfflineDoc() ?? "") : ""));
@@ -58,42 +53,21 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
     setDocGeneration({ ytext, generation: docGeneration + 1 });
   }
 
+  const session = useExecutionSession(codeRef, broadcastRun);
+
   const [flashKey, setFlashKey] = useState(0);
-  const prevStatusRef = useRef(status);
+  const prevStatusRef = useRef(session.status);
   const lastSeenRunBroadcastIdRef = useRef<string | null>(null);
-  // Set right before replaying an incoming broadcast, so it doesn't itself
-  // broadcast and ping-pong back and forth between tabs.
-  const suppressBroadcastRef = useRef(false);
-
-  const onRequestRecording = useCallback(() => {
-    setTimelineSteps(null);
-    setTimelineError(null);
-    runTraced(codeRef.current);
-    setWorkspaceLayout("split");
-    if (suppressBroadcastRef.current) {
-      suppressBroadcastRef.current = false;
-    } else {
-      broadcastRun(crypto.randomUUID());
-    }
-  }, [runTraced, broadcastRun]);
-
-  const playback = usePlayback<OutputEntry>(timelineSteps, timelineError, onRequestRecording);
-
-  // Any doc edit, local or a collaborator's, makes the recording stale.
-  const invalidateTimeline = useCallback(() => {
-    setTimelineSteps((prev) => (prev === null ? prev : null));
-    setTimelineError((prev) => (prev === null ? prev : null));
-  }, []);
 
   const handleDocChange = useCallback(
     (doc: string) => {
       codeRef.current = doc;
       setDocBytes(byteLength(doc));
       setFormatError(null);
-      invalidateTimeline();
+      session.invalidate();
       offlineWriterRef.current?.schedule(doc);
     },
-    [invalidateTimeline],
+    [session],
   );
 
   // Without this, a fragment change (back/forward, or pasting a room link into
@@ -116,23 +90,18 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
   }, []);
 
   const handlePlayPause = useCallback(() => {
-    if (playback.phase === "playing") {
-      playback.pause();
+    const transport = session.transport;
+    if (!transport) return;
+    if (transport.phase === "playing") {
+      transport.pause();
     } else {
-      playback.play();
+      transport.play();
     }
-  }, [playback]);
+  }, [session]);
 
   const handleRun = useCallback(() => {
-    playback.restart();
-  }, [playback]);
-
-  const handleReset = useCallback(() => {
-    // A recording that's still in flight has no other way to be aborted --
-    // the same hard worker-terminate the old Stop control used.
-    if (playback.phase === "recording" && status === "running") stop();
-    playback.reset();
-  }, [playback, status, stop]);
+    session.run();
+  }, [session]);
 
   const handleCycleLayout = useCallback(() => {
     setWorkspaceLayout((prev) => nextWorkspaceLayout(prev));
@@ -155,7 +124,7 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
 
   useGlobalShortcuts({
     onRun: handleRun,
-    onStop: handleReset,
+    onStop: session.stop,
     onCycleLayout: handleCycleLayout,
     onFormat: handleFormat,
   });
@@ -166,25 +135,19 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
     if (lastRunBroadcast === null) return;
     if (lastSeenRunBroadcastIdRef.current === lastRunBroadcast.id) return;
     lastSeenRunBroadcastIdRef.current = lastRunBroadcast.id;
-    suppressBroadcastRef.current = true;
-    playback.restart();
-  }, [lastRunBroadcast, playback]);
+    session.run({ broadcast: false });
+  }, [lastRunBroadcast, session]);
 
-  // the flash means "code is executing"
+  // the flash means "code is executing"; a run starting is also the moment
+  // the split view should reveal output, so both mode's runs land here.
   useEffect(() => {
     const prevStatus = prevStatusRef.current;
-    prevStatusRef.current = status;
-    if (prevStatus !== "running" && status === "running") {
+    prevStatusRef.current = session.status;
+    if (prevStatus !== "running" && session.status === "running") {
       setFlashKey((key) => key + 1);
+      setWorkspaceLayout("split");
     }
-  }, [status]);
-
-  // Playback may still be animating after the worker itself reports "ready".
-  const isPlaybackBusy = playback.phase === "recording" || playback.phase === "playing";
-  const displayStatus = isPlaybackBusy && status === "ready" ? "running" : status;
-  const visibleOutput: OutputEntry[] = playback.errorRevealed
-    ? [...playback.visibleOutputs, { kind: "traceback", text: playback.errorRevealed }]
-    : playback.visibleOutputs;
+  }, [session.status]);
 
   return (
     <div className="flex h-full flex-col bg-background text-foreground">
@@ -201,16 +164,22 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
           onLayoutChange={setWorkspaceLayout}
           formatError={formatError}
           controls={
-            <PlaybackControls
-              phase={playback.phase}
-              canStepBack={playback.canStepBack}
-              canStepForward={playback.canStepForward}
-              canReset={playback.canReset}
-              onStepBack={playback.stepBack}
-              onStepForward={playback.stepForward}
-              onPlayPause={handlePlayPause}
-              onReset={handleReset}
-            />
+            <ControlBar mode={session.mode} onModeChange={session.setMode}>
+              {session.transport ? (
+                <PlaybackControls
+                  phase={session.transport.phase}
+                  canStepBack={session.transport.canStepBack}
+                  canStepForward={session.transport.canStepForward}
+                  canReset={session.transport.canReset}
+                  onStepBack={session.transport.stepBack}
+                  onStepForward={session.transport.stepForward}
+                  onPlayPause={handlePlayPause}
+                  onReset={session.transport.reset}
+                />
+              ) : (
+                <RunControls status={session.status} onRun={handleRun} onStop={session.stop} />
+              )}
+            </ControlBar>
           }
           editor={
             mode === "offline" ? (
@@ -219,7 +188,7 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
                 ref={editorRef}
                 initialDoc={initialOfflineDoc}
                 flashKey={flashKey}
-                currentLine={playback.currentLine}
+                currentLine={session.currentLine}
                 onChange={handleDocChange}
               />
             ) : ytext === null ? null : (
@@ -230,21 +199,21 @@ function AppShellInner({ mode }: { mode: AppShellMode }) {
                 ytext={ytext}
                 awareness={awareness}
                 flashKey={flashKey}
-                currentLine={playback.currentLine}
+                currentLine={session.currentLine}
                 onChange={handleDocChange}
               />
             )
           }
           output={
-            <OutputPane status={displayStatus} output={visibleOutput} fetchDataframePage={fetchDataframePage} />
+            <OutputPane status={session.status} output={session.output} fetchDataframePage={session.fetchDataframePage} />
           }
         />
       </main>
       <StatusBar
-        runtimeStatus={displayStatus}
+        runtimeStatus={session.status}
         formatterStatus={formatterStatus}
         docBytes={docBytes}
-        stepNumber={playback.stepNumber}
+        stepNumber={session.stepNumber}
       />
     </div>
   );
@@ -254,9 +223,11 @@ export function AppShell({ mode = "collab" }: { mode?: AppShellMode } = {}) {
   return (
     <ThemeProvider>
       <VimModeProvider>
-        <AliasProvider>
-          <AppShellInner mode={mode} />
-        </AliasProvider>
+        <ExecutionModeProvider>
+          <AliasProvider>
+            <AppShellInner mode={mode} />
+          </AliasProvider>
+        </ExecutionModeProvider>
       </VimModeProvider>
     </ThemeProvider>
   );

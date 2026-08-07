@@ -1,6 +1,11 @@
-import type { ExecutionOutcome, ExecutionRunner } from "@txt4/core";
+import type { ExecutionOutcome, ExecutionRunner, StreamingExecutionRunner } from "@txt4/core";
 
 export type LangJsOutput = { kind: "log"; text: string };
+
+// Shared so run mode and debug mode can never render the same code differently.
+function formatLogArgs(args: unknown[]): string {
+  return args.map((value) => (typeof value === "string" ? value : String(value))).join(" ");
+}
 
 // Dev-harness-only, unsafe for untrusted input: the whole program runs as a
 // single `new Function` body (only ever the trusted samples in this
@@ -19,8 +24,7 @@ export const langJsRunner: ExecutionRunner<LangJsOutput> = {
       currentStepIndex = steps.length - 1;
     };
     const log = (...args: unknown[]) => {
-      const text = args.map((value) => (typeof value === "string" ? value : String(value))).join(" ");
-      steps[currentStepIndex].outputs.push({ kind: "log", text });
+      steps[currentStepIndex].outputs.push({ kind: "log", text: formatLogArgs(args) });
     };
     const console = { log };
 
@@ -38,6 +42,26 @@ export const langJsRunner: ExecutionRunner<LangJsOutput> = {
       return { steps, error: null };
     } catch (err) {
       return { steps, error: err instanceof Error ? err.message : String(err) };
+    }
+  },
+};
+
+// Dev-harness-only, unsafe for untrusted input: the whole program runs as a
+// single `new Function` body, synchronous and non-interruptible on the main
+// thread.
+export const langJsStreamingRunner: StreamingExecutionRunner<LangJsOutput> = {
+  async run(code, onOutput) {
+    const log = (...args: unknown[]) => {
+      onOutput({ kind: "log", text: formatLogArgs(args) });
+    };
+    const console = { log };
+
+    try {
+      const fn = new Function("console", code);
+      fn(console);
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
     }
   },
 };

@@ -3,6 +3,8 @@ import { Txt4Editor, usePlayback } from "@txt4/core";
 import type { LanguageEntry } from "./languages";
 import { navigate } from "./router";
 
+type ExecutionMode = "run" | "debug";
+
 function snippetFromSearch(entry: LanguageEntry) {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("snippet");
@@ -16,6 +18,10 @@ export function LanguagePage({ entry }: { entry: LanguageEntry }) {
   const [doc, setDoc] = useState(snippet.code);
   const [steps, setSteps] = useState<Parameters<typeof usePlayback>[0]>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<ExecutionMode>("debug");
+  const [runOutput, setRunOutput] = useState<unknown[]>([]);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
 
   const onRequestRecording = useCallback(async () => {
     const outcome = await entry.runner.run(doc);
@@ -27,12 +33,31 @@ export function LanguagePage({ entry }: { entry: LanguageEntry }) {
     void onRequestRecording();
   });
 
+  const runStreaming = useCallback(async () => {
+    if (!entry.streamingRunner) return;
+    setRunOutput([]);
+    setRunError(null);
+    setRunning(true);
+    const { error: outcomeError } = await entry.streamingRunner.run(doc, (item) => {
+      setRunOutput((prev) => [...prev, item]);
+    });
+    setRunError(outcomeError);
+    setRunning(false);
+  }, [entry, doc]);
+
+  const stopStreaming = () => {
+    entry.streamingRunner?.stop?.();
+    setRunning(false);
+  };
+
   const selectSnippet = (next: typeof snippet) => {
     setSnippet(next);
     setDoc(next.code);
     setSteps(null);
     setError(null);
     playback.reset();
+    setRunOutput([]);
+    setRunError(null);
     navigate(`${entry.path}?snippet=${next.id}`);
   };
 
@@ -84,83 +109,147 @@ export function LanguagePage({ entry }: { entry: LanguageEntry }) {
                 setDoc(next);
                 setSteps(null);
                 setError(null);
+                setRunOutput([]);
+                setRunError(null);
               }}
               extensions={entry.extensions}
-              currentLine={playback.currentLine}
+              currentLine={mode === "debug" ? playback.currentLine : null}
               colors={{ runColor: "#61afef" }}
             />
           </div>
         </main>
 
         <aside className="flex w-96 min-h-0 flex-col border-l border-slate-800 bg-slate-900">
-          <div className="flex flex-wrap gap-2 border-b border-slate-800 p-3">
+          <div className="flex gap-1 border-b border-slate-800 p-3">
             <button
-              onClick={playback.stepBack}
-              disabled={!playback.canStepBack}
-              className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600"
+              onClick={() => setMode("run")}
+              disabled={!entry.streamingRunner}
+              className={`rounded px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:text-slate-600 ${
+                mode === "run" ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
             >
-              ◀ step
-            </button>
-            {playback.phase === "playing" ? (
-              <button
-                onClick={playback.pause}
-                className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700"
-              >
-                pause
-              </button>
-            ) : (
-              <button
-                onClick={playback.play}
-                className="rounded border border-sky-700 bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-500"
-              >
-                play
-              </button>
-            )}
-            <button
-              onClick={playback.stepForward}
-              disabled={!playback.canStepForward}
-              className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600"
-            >
-              step ▶
+              Run
             </button>
             <button
-              onClick={playback.reset}
-              disabled={!playback.canReset}
-              className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600"
+              onClick={() => setMode("debug")}
+              className={`rounded px-3 py-1.5 text-sm transition-colors ${
+                mode === "debug" ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
             >
-              reset
+              Debug
             </button>
           </div>
 
-          <div className="flex gap-4 border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
-            <span>
-              phase: <span className="text-slate-200">{playback.phase}</span>
-            </span>
-            <span>
-              step: <span className="text-slate-200">{playback.stepNumber ?? "-"}</span>
-            </span>
-            <span>
-              line: <span className="text-slate-200">{playback.currentLine ?? "-"}</span>
-            </span>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
-            {playback.visibleOutputs.length === 0 && !playback.errorRevealed && (
-              <p className="text-sm text-slate-600">No output yet.</p>
-            )}
-            <ul className="flex flex-col gap-1">
-              {playback.visibleOutputs.map((output, i) => (
-                <li key={i} className="rounded bg-slate-800/60 px-2 py-1 font-mono text-sm text-slate-200">
-                  {entry.renderOutput(output)}
-                </li>
-              ))}
-            </ul>
-            {playback.errorRevealed && (
-              <div className="mt-2 rounded border border-red-800 bg-red-950 px-2 py-1.5 font-mono text-sm text-red-300">
-                error: {playback.errorRevealed}
+          {mode === "debug" ? (
+            <>
+              <div className="flex flex-wrap gap-2 border-b border-slate-800 p-3">
+                <button
+                  onClick={playback.stepBack}
+                  disabled={!playback.canStepBack}
+                  className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600"
+                >
+                  ◀ step
+                </button>
+                {playback.phase === "playing" ? (
+                  <button
+                    onClick={playback.pause}
+                    className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700"
+                  >
+                    pause
+                  </button>
+                ) : (
+                  <button
+                    onClick={playback.play}
+                    className="rounded border border-sky-700 bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-500"
+                  >
+                    play
+                  </button>
+                )}
+                <button
+                  onClick={playback.stepForward}
+                  disabled={!playback.canStepForward}
+                  className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600"
+                >
+                  step ▶
+                </button>
+                <button
+                  onClick={playback.reset}
+                  disabled={!playback.canReset}
+                  className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600"
+                >
+                  reset
+                </button>
               </div>
-            )}
-          </div>
+
+              <div className="flex gap-4 border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
+                <span>
+                  phase: <span className="text-slate-200">{playback.phase}</span>
+                </span>
+                <span>
+                  step: <span className="text-slate-200">{playback.stepNumber ?? "-"}</span>
+                </span>
+                <span>
+                  line: <span className="text-slate-200">{playback.currentLine ?? "-"}</span>
+                </span>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+                {playback.visibleOutputs.length === 0 && !playback.errorRevealed && (
+                  <p className="text-sm text-slate-600">No output yet.</p>
+                )}
+                <ul className="flex flex-col gap-1">
+                  {playback.visibleOutputs.map((output, i) => (
+                    <li key={i} className="rounded bg-slate-800/60 px-2 py-1 font-mono text-sm text-slate-200">
+                      {entry.renderOutput(output)}
+                    </li>
+                  ))}
+                </ul>
+                {playback.errorRevealed && (
+                  <div className="mt-2 rounded border border-red-800 bg-red-950 px-2 py-1.5 font-mono text-sm text-red-300">
+                    error: {playback.errorRevealed}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2 border-b border-slate-800 p-3">
+                <button
+                  onClick={() => void runStreaming()}
+                  disabled={running || !entry.streamingRunner}
+                  className="rounded border border-sky-700 bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600"
+                >
+                  run
+                </button>
+                <button
+                  onClick={stopStreaming}
+                  disabled={!running || !entry.streamingRunner?.stop}
+                  className="rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600"
+                >
+                  stop
+                </button>
+              </div>
+
+              <div className="flex gap-4 border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
+                <span>
+                  status: <span className="text-slate-200">{running ? "running" : runError ? "error" : "idle"}</span>
+                </span>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+                {runOutput.length === 0 && (
+                  <p className="text-sm text-slate-600">No output yet.</p>
+                )}
+                <ul className="flex flex-col gap-1">
+                  {runOutput.map((output, i) => (
+                    <li key={i} className="rounded bg-slate-800/60 px-2 py-1 font-mono text-sm text-slate-200">
+                      {entry.renderOutput(output)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </aside>
       </div>
     </div>

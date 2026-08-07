@@ -7,5 +7,10 @@ export { usePlayback } from "./playback/usePlayback.js";
 export type { PlaybackPhase, UsePlaybackResult } from "./playback/usePlayback.js";
 export type { PlaybackStep } from "./playback/types.js";
 
-export type { ExecutionOutcome, ExecutionRunner } from "./protocol/types.js";
+export type {
+  ExecutionOutcome,
+  ExecutionRunner,
+  ExecutionMode,
+  StreamingExecutionRunner,
+} from "./protocol/types.js";
 export type { Snippet } from "./protocol/snippet.js";
